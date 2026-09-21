@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutomateBrowser — automate your real browser with AI</title>
+<meta name="description" content="Automate your real browser with AI. Debugger-free, logged-in, shareable across IDEs.">
+<meta name="theme-color" content="#faf7f2">
+<meta property="og:title" content="AutomateBrowser">
+<meta property="og:description" content="Automate your real browser with AI — debugger-free, logged-in, and shareable across IDEs.">
+<meta property="og:type" content="website">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf7f2;
+  --paper-2:#f2ede4;
+  --ink:#0D1D34;
+  --ink-soft:#44506B;
+  --muted:#7C899E;
+  --rule:#ded5c8;
+  --rule-strong:#c4b8a7;
+  --accent:#0C54C3;
+  --accent-soft:#DCE7FA;
+  --sage:#4d6152;
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+  --max:1140px;
+  --gut:clamp(22px,6vw,64px);
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--sans);font-size:16px;line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--max);margin-inline:auto;padding-inline:var(--gut)}
+p{margin:0}
+h1,h2,h3,h4{margin:0;font-weight:400}
+a{color:inherit}
+.serif{font-family:var(--serif)}
+
+/* ---------- masthead ---------- */
+.mast{border-block-end:1px solid var(--ink);position:sticky;top:0;z-index:40;background:var(--paper)}
+.mast-in{display:flex;align-items:baseline;gap:20px;padding-block:14px}
+.logo{display:inline-flex;align-items:center;gap:10px;font-family:var(--serif);font-size:22px;letter-spacing:-.01em;text-decoration:none}
+.logo img{height:26px;width:auto}
+.mast-links{margin-inline-start:auto;display:none;gap:20px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mast-links a{text-decoration:none}
+.mast-links a:hover{color:var(--accent)}
+@media(min-width:820px){.mast-links{display:flex}}
+
+/* ---------- hero ---------- */
+.hero{padding-block:clamp(44px,7vw,86px) clamp(40px,6vw,72px);border-block-end:1px solid var(--rule)}
+.dek{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-block-end:26px}
+.head{font-family:var(--serif);font-size:clamp(44px,9.5vw,108px);line-height:.96;letter-spacing:-.025em;max-width:15ch}
+.head i{color:var(--accent)}
+.hero-body{display:grid;gap:34px;margin-block-start:40px;padding-block-start:34px;border-block-start:1px solid var(--rule)}
+@media(min-width:860px){.hero-body{grid-template-columns:1.1fr .9fr;gap:60px}}
+.standfirst{font-family:var(--serif);font-size:clamp(20px,2.4vw,27px);line-height:1.42;color:var(--ink-soft)}
+.standfirst b{color:var(--ink);font-weight:400;box-shadow:inset 0 -.42em 0 var(--accent-soft)}
+.hero-col p+p{margin-block-start:16px}
+.hero-col .small{font-size:15px;color:var(--ink-soft)}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin-block-start:26px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;text-decoration:none;font-size:14px;font-weight:500;border:1px solid var(--ink);transition:background-color .18s,color .18s,border-color .18s}
+.btn-solid{background:var(--ink);color:var(--paper)}
+.btn-solid:hover{background:var(--accent);border-color:var(--accent)}
+.btn-line:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ---------- stat strip ---------- */
+.strip{border-block-end:1px solid var(--rule);background:var(--paper-2)}
+.strip-in{display:grid;gap:0;padding-block:0}
+@media(min-width:700px){.strip-in{grid-template-columns:repeat(4,1fr)}}
+.stat{padding:26px 0;border-block-end:1px solid var(--rule)}
+@media(min-width:700px){
+  .stat{padding:30px 26px;border-block-end:0;border-inline-start:1px solid var(--rule)}
+  .stat:first-child{border-inline-start:0;padding-inline-start:0}
+}
+.stat b{display:block;font-family:var(--serif);font-size:clamp(32px,4vw,44px);line-height:1;letter-spacing:-.02em}
+.stat span{display:block;margin-block-start:8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- section ---------- */
+section{padding-block:clamp(54px,7.5vw,90px);border-block-end:1px solid var(--rule)}
+.sec-head{display:grid;gap:16px;margin-block-end:44px}
+@media(min-width:860px){.sec-head{grid-template-columns:auto 1fr;gap:44px;align-items:start}}
+.folio{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--accent);padding-block-start:12px;white-space:nowrap}
+h2{font-family:var(--serif);font-size:clamp(30px,4.6vw,50px);line-height:1.06;letter-spacing:-.02em;max-width:20ch}
+.sec-sub{margin-block-start:16px;color:var(--ink-soft);max-width:60ch}
+
+/* ---------- index list ---------- */
+.index{border-block-start:1px solid var(--ink)}
+.item{display:grid;gap:6px 28px;padding-block:26px;border-block-end:1px solid var(--rule);align-items:start}
+@media(min-width:860px){.item{grid-template-columns:64px 300px 1fr}}
+.item .n{font-family:var(--mono);font-size:12px;color:var(--muted);padding-block-start:7px}
+.item h3{font-family:var(--serif);font-size:clamp(22px,2.6vw,29px);line-height:1.18;letter-spacing:-.01em}
+.item ul{margin:0;padding-inline-start:0;list-style:none;display:grid;gap:8px}
+.item li{font-size:15px;color:var(--ink-soft);line-height:1.6;padding-inline-start:20px;position:relative}
+.item li::before{content:"—";position:absolute;inset-inline-start:0;color:var(--rule-strong)}
+.item li b{color:var(--ink);font-weight:600}
+
+/* ---------- tool catalogue ---------- */
+.cat{border-block-start:1px solid var(--ink)}
+.cat-row{display:grid;gap:6px 28px;padding-block:24px;border-block-end:1px solid var(--rule);align-items:start}
+@media(min-width:860px){.cat-row{grid-template-columns:64px 300px 1fr}}
+.cat-row .n{font-family:var(--mono);font-size:12px;color:var(--muted);padding-block-start:7px}
+.cat-row h3{font-family:var(--serif);font-size:clamp(20px,2.3vw,25px);line-height:1.2;letter-spacing:-.01em}
+.cat-list{margin:0}
+.cat-list dt{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--ink);overflow-wrap:anywhere;margin-block-start:20px}
+.cat-list dt:first-child{margin-block-start:0}
+.cat-list dd{margin:5px 0 0;font-size:14.5px;color:var(--ink-soft);line-height:1.6}
+
+/* ---------- pull quote ---------- */
+.pull{background:var(--ink);color:var(--paper);border-block-end:1px solid var(--ink)}
+.pull-in{padding-block:clamp(56px,8vw,96px);display:grid;gap:26px}
+@media(min-width:860px){.pull-in{grid-template-columns:1fr auto;align-items:end;gap:56px}}
+.pull q{font-family:var(--serif);font-size:clamp(28px,4.6vw,52px);line-height:1.12;letter-spacing:-.02em;quotes:none;display:block;max-width:19ch}
+.pull q em{color:#7FB0FF;font-style:italic}
+.pull .attr{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8FA0BC;max-width:26ch;line-height:1.9}
+
+/* ---------- architecture ---------- */
+.arch{display:grid;gap:28px}
+.arch > *{min-width:0}
+@media(min-width:900px){.arch{grid-template-columns:1.15fr .85fr;gap:56px;align-items:start}}
+.arch-fig{border:1px solid var(--ink);background:var(--paper-2);padding:20px 16px;overflow-x:auto}
+.arch-fig pre{margin:0;font-family:var(--mono);font-size:11.5px;line-height:1.85;color:var(--ink-soft)}
+.arch-fig pre b{color:var(--accent);font-weight:500}
+.cap{margin-block-start:12px;font-size:12.5px;color:var(--muted);font-style:italic}
+.gloss dt{font-family:var(--serif);font-size:21px;margin-block-start:22px}
+.gloss dd{margin:6px 0 0;font-size:15px;color:var(--ink-soft)}
+.gloss dt:first-child{margin-block-start:0}
+
+/* ---------- steps ---------- */
+.recipe{counter-reset:s;border-block-start:1px solid var(--ink)}
+.rstep{padding-block:30px;border-block-end:1px solid var(--rule);display:grid;gap:14px}
+.rstep > div{min-width:0}
+@media(min-width:860px){.rstep{grid-template-columns:64px 1fr;gap:28px}}
+.rstep::before{counter-increment:s;content:counter(s,decimal-leading-zero);font-family:var(--mono);font-size:12px;color:var(--accent);padding-block-start:9px}
+.rstep h3{font-family:var(--serif);font-size:26px;line-height:1.2}
+.rstep p{margin-block-start:8px;color:var(--ink-soft);max-width:60ch}
+pre.code{margin:16px 0 0;font-family:var(--mono);font-size:13px;line-height:1.8;background:var(--paper-2);border-inline-start:2px solid var(--accent);padding:14px 18px;overflow-x:auto;color:var(--ink)}
+pre.code .c{color:var(--muted)}
+
+/* ---------- foot ---------- */
+footer{padding-block:44px 56px}
+.foot{display:grid;gap:18px}
+@media(min-width:760px){.foot{grid-template-columns:1fr auto;align-items:end}}
+.foot .serif{font-size:30px;line-height:1.1}
+.foot-links{display:flex;flex-wrap:wrap;gap:20px;font-size:13px;color:var(--muted)}
+.foot-links a{text-decoration:none}
+.foot-links a:hover{color:var(--accent)}
+.rights{margin-block-start:22px;font-size:12px;color:var(--muted)}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap mast-in">
+    <a class="logo" href="#top"><img src="logo.png" alt="" width="292" height="220">AutomateBrowser</a>
+    <nav class="mast-links">
+      <a href="#what">Capabilities</a><a href="#tools">Tools</a><a href="#how">Architecture</a><a href="#start">Quick start</a>
+      <a href="https://github.com/farazpawle/automatebrowser">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero" id="top" style="border-block-end:1px solid var(--rule)">
+  <div class="wrap">
+    <p class="dek">A browser tool for AI agents</p>
+    <h1 class="head">The browser you<br>already trust,<br><i>handed to the machine.</i></h1>
+
+    <div class="hero-body">
+      <div class="hero-col">
+        <p class="standfirst">Every other automation tool opens a blank browser and then spends the next hour trying to get past a login screen. This one <b>drives the browser sitting in front of you</b> — your sessions, your cookies, your fingerprint.</p>
+        <div class="actions">
+          <a class="btn btn-solid" href="#start">Quick start</a>
+          <a class="btn btn-line" href="https://github.com/farazpawle/automatebrowser">Read the source</a>
+        </div>
+      </div>
+      <div class="hero-col">
+        <p class="small">It is two halves. A small server your editor runs, and an extension in Chrome or Edge. They speak to each other over a socket on your own machine, and nothing at all leaves the device.</p>
+        <p class="small">Works today with Claude Code, Claude Desktop, Cursor, VS Code and Windsurf — and from a plain terminal.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="strip">
+  <div class="wrap strip-in">
+    <div class="stat"><b>46</b><span>Tools</span></div>
+    <div class="stat"><b>0</b><span>Data leaving your machine</span></div>
+    <div class="stat"><b>1</b><span>Driver per tab</span></div>
+    <div class="stat"><b>∞</b><span>Editors sharing one browser</span></div>
+  </div>
+</div>
+
+<section id="what">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="folio">I. Capabilities</p>
+      <div>
+        <h2>What an agent can actually do in there.</h2>
+        <p class="sec-sub">All 46 tools, grouped by intent. Actions stay deliberately terse — a short confirmation rather than a page dump — so a long working session does not drown the model in its own transcript.</p>
+      </div>
+    </div>
+
+    <div class="index">
+      <article class="item">
+        <span class="n">01</span>
+        <h3>Drive the page</h3>
+        <ul>
+          <li>Navigate, <b>hard reload past the cache</b>, go back and forward, wait for a condition rather than a guess. A navigation that did not happen <b>says so</b>, instead of handing you the page you were already on.</li>
+          <li>Click, type, hover, drag, press keys, and <b>fill an entire form in a single call</b> — including one that spans an embedded widget and the page around it.</li>
+          <li>Click by element, or by <b>coordinate</b> for canvases, maps and PDF viewers that no page tree can name.</li>
+          <li>Upload files, and answer the browser's own <b>alert, confirm and “Leave site?” dialogs</b>.</li>
+          <li>Every action waits until the element is <b>visible, enabled, still and not covered</b>, then waits for the page to settle.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">02</span>
+        <h3>Read the page</h3>
+        <ul>
+          <li>Structured snapshots in three sizes: <b>lean, full, or written straight to a file</b>.</li>
+          <li>Clean text, Markdown, raw HTML, and a search that returns only the elements you asked about.</li>
+          <li>Element references <b>survive a re-render</b>, and quietly recover themselves once if the page swapped them out.</li>
+          <li>Reading reaches <b>inside iframes, including cross-origin ones</b>, with empty frames dropped.</li>
+          <li>Ask a page for the <b>actions it declares about itself</b>, and call one directly instead of hunting for the button that triggers it.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">03</span>
+        <h3>See what went wrong</h3>
+        <ul>
+          <li>Console output, <b>uncaught errors with their stacks</b>, and service-worker lifecycle in one place.</li>
+          <li>A <b>browser issues feed</b> for the failures that print nothing at all: content blocked by policy, deprecated APIs, failed requests. Usually the answer when something silently did nothing.</li>
+          <li>The network list, <b>paged newest first</b> so a chatty page cannot spend the whole context in one call, plus the <b>response body</b> of any single request.</li>
+          <li>An <b>accessibility audit</b> of the page you are on, worst first, mapped back to the elements an agent can actually act on.</li>
+          <li>A result says <b>which of five things happened</b> — refused, done, partly done, failed, or nobody was listening — rather than one error flag. A failure carries a typed code and names the tool that fixes it.</li>
+          <li>Both logs <b>survive the browser putting the extension to sleep</b>, and carry across a redirect.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">04</span>
+        <h3>Measure speed</h3>
+        <ul>
+          <li>One call profiles a whole page load and reports <b>LCP, FCP, CLS and INP</b> against Google's own thresholds.</li>
+          <li><b>Find out where the LCP time went</b>, not merely how long it was — the server, discovering the image, fetching it, painting it.</li>
+          <li>The long tasks that blocked the main thread, named rather than summarised.</li>
+          <li>Re-read a saved trace later without recording it again, and with no browser attached at all.</li>
+          <li><b>Watch the JS heap</b> over a window and get the trend — no debugger, no banner.</li>
+          <li>Ask what <b>real visitors</b> experience, from public field data, instead of trusting one fast laptop.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">05</span>
+        <h3>Capture, and pretend</h3>
+        <ul>
+          <li>Screenshots of the viewport, the <b>full scrollable page</b>, or a single element — written to disk so the image never costs a context window.</li>
+          <li>A <b>strip of stills</b> on a timer, to show a person what happened instead of describing it.</li>
+          <li>Fake a <b>location</b>, a user agent, extra headers, or a colour scheme.</li>
+          <li>Emulate a <b>phone viewport with touch</b>, a throttled network, or a slow processor.</li>
+          <li>Run your own script <b>before the page's own code</b>, to freeze a clock or mock a request.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">06</span>
+        <h3>Stay out of your way</h3>
+        <ul>
+          <li><b>The agent works in its own tab.</b> It opens one in the background on first use and leaves the tab you are reading completely alone.</li>
+          <li>Nothing steals your focus except the single tool whose entire job is to show you something.</li>
+          <li><b>Ownership is per tab</b>, so two editors can drive two tabs of one browser at once, with a polite named handoff when they want the same one.</li>
+          <li><b>The connection repairs itself.</b> Lose the relay, or start before it is ready, and the server reconnects on its own rather than failing every call until you restart it.</li>
+          <li>A <b>clean, logged-out session</b> on demand, in a private window, for checking what a first-time visitor actually sees.</li>
+          <li>The server leaves when your editor does, so a closed window never strands a phantom agent.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">07</span>
+        <h3>Keep it safe</h3>
+        <ul>
+          <li><b>Cookie, storage and download values are hidden by default.</b> An agent reading them gets the names, not your session tokens, until it explicitly asks.</li>
+          <li><b>Allow and deny lists</b> of sites, enforced at the network layer as well as the tool layer, plus a global read-only mode.</li>
+          <li>A file-path sandbox on every write, and ordinary web pages only — no local files, no browser internals.</li>
+          <li>A switch that lets an agent <b>click and read a logged-in session but never run code you did not write</b>.</li>
+          <li><b>Certificate checking is never switched off</b> — by any tool, for any tab, in any mode.</li>
+          <li>An <b>audit log</b> of every call and its target, with secrets recorded as a length and never a value.</li>
+        </ul>
+      </article>
+
+      <article class="item">
+        <span class="n">08</span>
+        <h3>Reach further</h3>
+        <ul>
+          <li>Drive a browser <b>on another machine</b>, with a shared secret that is mandatory the moment it leaves your own — and that is never sent over the socket, only used to sign a challenge.</li>
+          <li>Set a <b>proxy for the whole browser</b>, not merely for one request.</li>
+          <li>A <b>terminal client</b> that can answer in JSON for scripting, sharing the same relay as every editor you have open.</li>
+          <li>Serve a <b>smaller set of tools</b> — core or slim — so the schemas cost less of every single request.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<div class="pull">
+  <div class="wrap pull-in">
+    <q>No “started debugging this browser” banner. <em>Ever</em>, unless you ask for it.</q>
+    <p class="attr">Interactions run through ordinary scripting. The debugger is attached only where nothing else can do the job, and it detaches again straight after.</p>
+  </div>
+</div>
+
+<section id="tools">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="folio">II. The full list</p>
+      <div>
+        <h2>All 46 tools, and what each one is for.</h2>
+        <p class="sec-sub">The section above groups them by what you are trying to do. This one names every single one, because an agent calls them by name and you may reasonably want to know exactly what you are handing over. A sentence or two each.</p>
+      </div>
+    </div>
+
+    <div class="cat">
+      <div class="cat-row">
+        <span class="n">01</span>
+        <h3>Navigation &amp; history</h3>
+        <dl class="cat-list">
+          <dt>browser_navigate</dt>
+          <dd>Opens a web address in the agent's own tab, in the background. It never takes over the tab you are looking at.</dd>
+          <dt>browser_go_back</dt>
+          <dd>Goes back a page, the way the back button does.</dd>
+          <dt>browser_go_forward</dt>
+          <dd>Goes forward again after going back.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">02</span>
+        <h3>Snapshot &amp; interaction</h3>
+        <dl class="cat-list">
+          <dt>browser_snapshot</dt>
+          <dd>Takes a structured reading of the page and hands back a label for every element on it. This is how the agent refers to the thing it wants to click or type into, rather than guessing at a selector.</dd>
+          <dt>browser_click</dt>
+          <dd>Clicks something — either by its label, or by a point on screen for canvases, maps and PDF viewers that have no label to give.</dd>
+          <dt>browser_hover</dt>
+          <dd>Moves the pointer over an element, for menus and tooltips that only appear when you hover.</dd>
+          <dt>browser_type</dt>
+          <dd>Types text into a box.</dd>
+          <dt>browser_select_option</dt>
+          <dd>Picks an option from a dropdown.</dd>
+          <dt>browser_drag</dt>
+          <dd>Drags one element onto another.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">03</span>
+        <h3>Input &amp; timing</h3>
+        <dl class="cat-list">
+          <dt>browser_press_key</dt>
+          <dd>Presses a key or a combination — Enter, Tab, Control+A — on whatever currently has focus.</dd>
+          <dt>browser_wait</dt>
+          <dd>Waits a fixed number of seconds. A blunt instrument, and usually the wrong one.</dd>
+          <dt>browser_wait_for</dt>
+          <dd>Waits until something is actually true: text appears, an element goes away, the address changes. Almost always the better choice, because it stops as soon as the thing happens instead of burning a guess.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">04</span>
+        <h3>Reading content</h3>
+        <dl class="cat-list">
+          <dt>browser_read_page</dt>
+          <dd>Reads the page's main content as clean text or Markdown, with the navigation, scripts and styling stripped out. The cheapest way to find out what a page actually says.</dd>
+          <dt>browser_get_html</dt>
+          <dd>Returns the raw markup, for when the structure or the attributes are the point and a plain reading would lose them.</dd>
+          <dt>browser_find</dt>
+          <dd>Finds elements by their text, their role or a selector and returns labels for just those, skipping the cost of reading the whole page.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">05</span>
+        <h3>Page-declared actions</h3>
+        <dl class="cat-list">
+          <dt>browser_page_tools</dt>
+          <dd>Lists and calls actions a page publishes about itself, so the agent can invoke them directly instead of hunting for the button. These survive redesigns that break clicking — but this is forward-looking, and almost no live site declares any yet.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">06</span>
+        <h3>Forms &amp; scrolling</h3>
+        <dl class="cat-list">
+          <dt>browser_fill_form</dt>
+          <dd>Fills many fields at once — text boxes, dropdowns, checkboxes, radio buttons — in a single call, including a form that spans an embedded widget and the page around it. If some fields refuse, it says which and reports itself as partly done rather than as a success.</dd>
+          <dt>browser_clear</dt>
+          <dd>Empties a field.</dd>
+          <dt>browser_scroll</dt>
+          <dd>Scrolls the page or a panel inside it — by a screenful, to the top or bottom, or just far enough to bring one element into view.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">07</span>
+        <h3>Cookies, storage, network and downloads</h3>
+        <dl class="cat-list">
+          <dt>browser_get_cookies</dt>
+          <dd>Lists the cookies for the site being driven. Values come back hidden unless they are explicitly asked for, so an agent reading cookies gets the names and not your session.</dd>
+          <dt>browser_set_cookie</dt>
+          <dd>Creates or overwrites a cookie, which is how a signed-in state gets seeded without going through a login screen.</dd>
+          <dt>browser_storage</dt>
+          <dd>Reads and writes the two stores a page keeps inside your browser. Values are hidden by default, the same as cookies.</dd>
+          <dt>browser_network_requests</dt>
+          <dd>Lists the requests the page made — method, address, status, type and timing — newest first and paged, so a chatty page cannot swallow the whole conversation in one call.</dd>
+          <dt>browser_handle_dialog</dt>
+          <dd>Deals with the browser's own pop-ups: alerts, confirmations, prompts and the native "Leave site?" warning. It can answer them as they arrive, or report the ones already seen.</dd>
+          <dt>browser_downloads</dt>
+          <dd>Lists recent downloads with where each one landed on disk, its type and size. Paths only — it never reads the contents.</dd>
+          <dt>browser_proxy</dt>
+          <dd>Routes traffic through a proxy. Worth knowing: this affects the whole browser, not only the automated tab, because Chrome offers no per-tab setting.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">08</span>
+        <h3>Speed, measured on real visitors</h3>
+        <dl class="cat-list">
+          <dt>browser_perf_field_data</dt>
+          <dd>Reports what people actually visiting an address experienced, from Google's public dataset, rather than what one fast laptop managed once. No browser is involved — and it does send the address you ask about to Google.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">09</span>
+        <h3>Capture &amp; evaluation</h3>
+        <dl class="cat-list">
+          <dt>browser_screenshot</dt>
+          <dd>Captures the visible screen, the full scrollable page, or a single element, as PNG, JPEG or WebP. It can write straight to a file so the image never costs a conversation, and can take a strip of stills on a timer to show a person what happened.</dd>
+          <dt>browser_get_console_logs</dt>
+          <dd>The page's console output, uncaught errors with their stacks, and background-worker lifecycle, in one place. These survive the browser putting the extension to sleep.</dd>
+          <dt>browser_issues</dt>
+          <dd>The problems the browser noticed that print nothing at all: content blocked by policy, deprecated features, failed and error-status requests. Usually the answer when something silently did nothing.</dd>
+          <dt>browser_eval</dt>
+          <dd>Runs a piece of JavaScript in the page and returns the result — either a quick expression, or a function handed the elements already found. Can be switched off entirely if you would rather no agent-written code ran at all.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">10</span>
+        <h3>Tabs</h3>
+        <dl class="cat-list">
+          <dt>browser_list_tabs</dt>
+          <dd>Lists the open tabs, with their addresses and titles.</dd>
+          <dt>browser_new_tab</dt>
+          <dd>Opens a new tab in the background and drives that, stealing no focus.</dd>
+          <dt>browser_switch_tab</dt>
+          <dd>Brings a tab to the front. The one tool that deliberately takes your focus, for when you asked to be shown something.</dd>
+          <dt>browser_select_tab</dt>
+          <dd>Takes over a tab you already have open without bringing it forward — the tool for "pick up the testing I started".</dd>
+          <dt>browser_close_tab</dt>
+          <dd>Closes a tab.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">11</span>
+        <h3>Several editors, several browsers</h3>
+        <dl class="cat-list">
+          <dt>browser_list_clients</dt>
+          <dd>Lists every browser connected to the shared relay — Chrome and Edge at once, say — across every editor you have open.</dd>
+          <dt>browser_select_client</dt>
+          <dd>Chooses which of those browsers the following actions apply to.</dd>
+          <dt>browser_force_claim</dt>
+          <dd>Takes over a browser another agent is currently driving. The other agent is told, the next time it tries to act.</dd>
+          <dt>browser_release_client</dt>
+          <dd>Hands a browser back so another agent can pick it up. Optional — claims also lapse on their own once an agent goes idle.</dd>
+          <dt>browser_status</dt>
+          <dd>The diagnostic. Reports the relay, this agent's own name, every connected browser and who is driving it, and any warnings — including whether a dropped connection is coming back. The first thing to call when something seems off.</dd>
+        </dl>
+      </div>
+
+      <div class="cat-row">
+        <span class="n">12</span>
+        <h3>Advanced mode, off by default</h3>
+        <dl class="cat-list">
+          <dt>browser_advanced_mode</dt>
+          <dd>Attaches Chrome's debugger to the tab being driven, which is the only thing that shows the yellow automation banner. Required by the four tools below, asked for by name every time, and remembered nowhere — it is gone the moment it detaches.</dd>
+          <dt>browser_upload_file</dt>
+          <dd>Puts real files into a file-picker field, as a genuine upload rather than a simulated one.</dd>
+          <dt>browser_get_network_request</dt>
+          <dd>Fetches the actual response body of a request, along with its status and headers — the part a request list cannot show you.</dd>
+          <dt>browser_perf_trace</dt>
+          <dd>Records a performance trace while the page is driven and turns it into answers: the vitals rated against Google's thresholds, where the largest paint's time went, and the tasks that blocked the page. It can re-read a saved trace later with no browser attached, and its memory mode samples the heap with no debugger and no banner.</dd>
+          <dt>browser_emulate</dt>
+          <dd>Pretends to be somewhere or something else — a location, a phone screen with touch, a user agent, extra headers, a colour scheme, a slow network or a slow processor.</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="folio">III. Architecture</p>
+      <div>
+        <h2>One relay in the middle, and no ports to configure.</h2>
+        <p class="sec-sub">A single lightweight relay owns the local socket. Each editor dials in as a controller; each browser extension dials in as a browser. The relay routes calls and hands out one lease per tab.</p>
+      </div>
+    </div>
+
+    <div class="arch">
+      <div>
+        <div class="arch-fig">
+<pre>   IDE 1 (Claude Code)         IDE 2 (Cursor)           IDE 3 (VS Code)
+       (controller)              (controller)             (controller)
+             \                        |                        /
+              +----------------> <b>127.0.0.1:9009</b> &lt;-------------+
+                                    Relay
+                                      |
+              +-----------------------+-----------------------+
+              |                       |                       |
+          Chrome ext              Edge ext               Brave ext
+          (your tab)              (your tab)             (your tab)</pre>
+        </div>
+        <p class="cap">Fig. 1 — Every editor shares the same browsers through one relay process.</p>
+      </div>
+
+      <dl class="gloss">
+        <dt>The relay</dt>
+        <dd>One long-lived socket host. It is spawned on demand and exits by itself roughly five minutes after the last peer disconnects.</dd>
+        <dt>The controller</dt>
+        <dd>The server your editor runs. It opens no port of its own. It dials the relay, registers under a human name, and forwards calls.</dd>
+        <dt>The browser</dt>
+        <dd>The extension. It connects on startup with no button to press, and runs the work inside your tab.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="folio">IV. Quick start</p>
+      <div>
+        <h2>Three steps. About five minutes.</h2>
+      </div>
+    </div>
+
+    <div class="recipe">
+      <article class="rstep">
+        <div>
+          <h3>Load the extension</h3>
+          <p>Chrome or Edge, version 137 or newer. Turn on Developer mode, choose Load unpacked, and select the build output folder.</p>
+<pre class="code"><span class="c"># in Chrome-extension/</span>
+npm install
+npm run build    <span class="c">→ .output/chrome-mv3/</span></pre>
+        </div>
+      </article>
+
+      <article class="rstep">
+        <div>
+          <h3>Build the server</h3>
+          <p>It carries its own dependencies, so it builds standalone with nothing else to install first.</p>
+<pre class="code"><span class="c"># in the repository root</span>
+npm install
+npm run build</pre>
+        </div>
+      </article>
+
+      <article class="rstep">
+        <div>
+          <h3>Point your AI client at it</h3>
+          <p>Then restart the client. You never choose a port — the server discovers the relay on its own.</p>
+<pre class="code">claude mcp add automatebrowser -- node "/path/to/dist/index.js"</pre>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <p class="serif">Drive the browser you<br>already have.</p>
+    <div>
+      <div class="foot-links">
+        <a href="https://github.com/farazpawle/automatebrowser">GitHub</a>
+        <a href="#start">Quick start</a>
+        <a href="https://modelcontextprotocol.io">Model Context Protocol</a>
+        <a href="privacy.html">Privacy</a>
+      </div>
+      <p class="rights">Apache License 2.0 · Contains portions © Microsoft Corporation and © Google Inc.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

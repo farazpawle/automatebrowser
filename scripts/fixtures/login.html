@@ -1,0 +1,19 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Fixture login</title>
+<style>body { font: 16px system-ui, sans-serif; margin: 2rem; }</style>
+<h1>Sign in</h1>
+<form id="form">
+  <p><label>User <input id="user" name="user" type="text" /></label></p>
+  <p><label>Password <input id="pass" name="pass" type="password" /></label></p>
+  <p><button id="submit" type="submit">Sign in</button></p>
+</form>
+<p id="result">signed out</p>
+<script>
+  document.getElementById("form").onsubmit = function (e) {
+    e.preventDefault();
+    var ok = document.getElementById("user").value === "ada" &&
+             document.getElementById("pass").value === "lovelace";
+    document.getElementById("result").textContent = ok ? "welcome ada" : "wrong credentials";
+  };
+</script>

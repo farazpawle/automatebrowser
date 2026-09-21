@@ -1,0 +1,81 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Stage 10 navigation timing</title>
+<!--
+  The B09 fixture: a page that takes MEASURABLE time to load, and proves which
+  document you are looking at.
+
+  A page that loads instantly cannot show the bug. The old settle polled the
+  tab's status, and straight after a reload that status still belongs to the
+  document being replaced — so with an instant page the wrong answer and the
+  right answer are the same answer. This page holds the load event open for
+  `delay` milliseconds, which makes "returned before the new document existed" a
+  number the suite can read rather than a claim it has to take on trust.
+
+  The delay is a SLOW SCRIPT, not a busy loop, and that distinction is the whole
+  reason the route exists. A synchronous spin was tried first and had to be
+  abandoned: it blocks the renderer, and a blocked renderer delays
+  `chrome.tabs.update` itself, so a `settleMs: 300` call measured 2910 ms with
+  every one of those milliseconds spent before the settle was even entered. The
+  check would have failed for a reason that has nothing to do with the product.
+  A script the server is slow to answer leaves the renderer idle, so only the
+  load event waits — which is the thing being timed.
+
+  Query parameters:
+    delay=<ms>   how long to hold the load event open (default 600)
+    redirect=1   replace the document before it ever finishes loading, so the
+                 suite sees one transition end somewhere other than where it was
+                 pointed — a client-side redirect is indistinguishable from a
+                 server one in the tab events the watcher reads.
+
+  What the page reports:
+    #nonce       fresh for every DOCUMENT. The same nonce after a navigation
+                 means nothing reloaded; a new one means a new document really
+                 was built, which is what `settled: true` is claiming.
+    #init        whatever `browser_navigate { initScript }` left on `window`
+                 BEFORE any page script ran. "none" here means the init script
+                 was torn down before this document could run it — the second
+                 half of B09.
+-->
+<script>
+  (function () {
+    // Before anything slow, so the redirector itself is instant: what is being
+    // timed is the page it lands on, not the hop.
+    if (new URLSearchParams(location.search).get("redirect") === "1") {
+      location.replace("stage10-navigation.html?from=redirect");
+      return;
+    }
+    // Read before anything else on the page can run — an init script is the only
+    // thing that could have set it.
+    window.__stage10 = {
+      nonce: Math.random().toString(36).slice(2, 8),
+      init: window.__stage10Init || null,
+    };
+  })();
+</script>
+<style>
+  body {
+    font: 15px system-ui, sans-serif;
+    margin: 1rem;
+  }
+  #deep {
+    margin-top: 150vh;
+  }
+</style>
+
+<h1>Navigation timing</h1>
+<p>document nonce <output id="nonce">?</output></p>
+<p>init script <output id="init">?</output></p>
+<p><a href="#deep">jump to the deep section</a></p>
+
+<!-- The fixture server rewrites this into slow.js?ms=<delay>. Parser-blocking
+     on purpose: the load event cannot fire until the server answers it. -->
+<script src="__SLOW_SRC__"></script>
+
+<h2 id="deep">Deep section</h2>
+<p>This sits a screen and a half down so a fragment jump is a real one.</p>
+
+<script>
+  document.getElementById("nonce").textContent = window.__stage10.nonce;
+  document.getElementById("init").textContent = window.__stage10.init || "none";
+</script>

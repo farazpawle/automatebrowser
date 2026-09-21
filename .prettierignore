@@ -1,0 +1,31 @@
+# Build output, vendored copies, reference material and tooling artifacts.
+dist/
+BKP/
+.local-backups/
+.commandcode/
+.gitnexus/
+node_modules/
+coverage/
+assets/
+designs/
+# A separate package with its own toolchain and its own CI job.
+Chrome-extension/
+
+# HTML is deliberately out of scope.
+#
+# `scripts/fixtures/` are the pages the integration and accessibility suites
+# assert against, and in HTML whitespace IS content: reflowing an element moves
+# the text nodes that make up a link's accessible name and everything
+# `browser_read_page` extracts. A formatter would quietly rewrite the thing under
+# test. `docs/index.html` is the published site page and is hand-kept.
+*.html
+
+# Markdown and JSON are deliberately out of scope.
+#
+# The prose here is hand-wrapped to carry meaning — the shipped skill indexes its
+# references BY LINE RANGE, so reflowing a paragraph silently invalidates the
+# index that `docs:generate` checks. And README, the two plugin manifests and
+# `gemini-extension.json` have machine-written regions; a formatter and a
+# generator both rewriting the same bytes is a fight CI would lose every push.
+*.md
+*.json

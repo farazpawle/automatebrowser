@@ -1,0 +1,61 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Fixture — actionability gate</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 2rem; }
+  #covered-wrap { position: relative; display: inline-block; }
+  /* A full-cover overlay, exactly the modal case: the button is visible and
+     enabled, and a click aimed at it would land on this instead. */
+  #overlay { position: absolute; inset: -6px; background: rgba(0, 0, 0, 0.35); }
+  /* Starts visible so a snapshot can see it and hand out a ref; "Start the fade"
+     drops it to nothing and brings it back over 300ms, which is the state the
+     gate has to wait out. */
+  #fading { transition: opacity 300ms linear; }
+</style>
+
+<h1>Gate fixture</h1>
+
+<p id="covered-wrap">
+  <button id="covered" type="button" onclick="document.getElementById('gate-status').textContent='covered pressed'">
+    Button under an overlay
+  </button>
+  <span id="overlay"></span>
+</p>
+
+<p>
+  <button id="reveal" type="button">Start the fade</button>
+  <button id="fading" type="button" onclick="document.getElementById('gate-status').textContent='fading pressed'">
+    Button that fades in
+  </button>
+</p>
+
+<!-- A live ticker rewrites the DOM every 50ms forever, so the post-action
+     "wait until the page goes quiet" can never see quiet. The settle cap is
+     what stops a click here from hanging. -->
+<p>Ticker: <span id="ticker">0</span></p>
+<p>
+  <button id="ordinary" type="button" onclick="document.getElementById('gate-status').textContent='ordinary pressed'">
+    Ordinary button on a noisy page
+  </button>
+</p>
+
+<p id="gate-status">gate idle</p>
+
+<script>
+  document.getElementById("reveal").onclick = function () {
+    var el = document.getElementById("fading");
+    el.style.transition = "none";
+    el.style.opacity = "0";
+    // A forced reflow, NOT requestAnimationFrame. rAF never fires in a background
+    // tab, and a background tab is where the agent always works since it stopped
+    // driving the user's foreground one — so the rAF version left this button at
+    // opacity 0 forever and the gate refused it, correctly, for 1000ms.
+    void el.offsetHeight;
+    el.style.transition = "opacity 300ms linear";
+    el.style.opacity = "1";
+  };
+  var n = 0;
+  setInterval(function () {
+    document.getElementById("ticker").textContent = String(++n);
+  }, 50);
+</script>

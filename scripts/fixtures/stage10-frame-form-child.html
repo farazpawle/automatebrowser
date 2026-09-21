@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Stage 10 embedded form frame</title>
+<!--
+  The embedded half of the B08 fixture. ONE file serves every frame position,
+  because the routing under test depends on where a document sits, never on what
+  it contains — and three near-identical files would drift.
+
+  `?origin=` names the position and is used for two things:
+
+    - It prefixes every label, so each instance's fields have UNIQUE accessible
+      names. The suite pulls a ref off the snapshot line mentioning a label, and
+      two frames offering "Text field" would make that lookup ambiguous.
+    - It decides whether this instance embeds a NESTED frame. Only the
+      cross-origin instance does, and the nested child carries `?nested=1` so it
+      stops there instead of recursing forever.
+
+  The nested frame is loaded by a RELATIVE url, so it is same-origin to this
+  document and cross-origin to the top one — a frame two boundaries down, which
+  is the case a single-hop fix would still get wrong.
+-->
+<style>
+  body {
+    font: 14px system-ui, sans-serif;
+    margin: 0.5rem;
+  }
+  label {
+    display: block;
+    margin: 0.3rem 0;
+  }
+  iframe {
+    width: 360px;
+    height: 90px;
+    border: 1px dashed #666;
+  }
+</style>
+
+<label><span class="tag"></span> text field <input id="text-field" name="text-field" /></label>
+<label><span class="tag"></span> note field <textarea id="note-field" name="note-field" rows="2"></textarea></label>
+<label>
+  <span class="tag"></span> pick field
+  <select id="pick-field" name="pick-field" aria-label="">
+    <option value="">none</option>
+    <option value="one">one</option>
+    <option value="two">two</option>
+  </select>
+</label>
+<label><span class="tag"></span> agree box <input id="agree-box" name="agree-box" type="checkbox" /></label>
+<input id="upload-field" name="upload-field" type="file" aria-label="" />
+<button id="submit-button" type="button" aria-label="">Submit</button>
+<div id="nested-slot"></div>
+
+<script>
+  const params = new URLSearchParams(location.search);
+  const where = params.get("nested") ? "nested" : (params.get("origin") || "child");
+
+  // Every visible label, and the two accessible names that have no text of their
+  // own, are tagged with this frame's position.
+  for (const tag of document.querySelectorAll(".tag")) tag.textContent = where;
+  // A <select> is named by its OPTIONS in a snapshot, never by the <label>
+  // around it, so this one needs a name of its own exactly as the two below do
+  // — three frames all offering "3 options" cannot be told apart.
+  document.getElementById("pick-field").setAttribute("aria-label", where + " pick field");
+  document.getElementById("upload-field").setAttribute("aria-label", where + " upload field");
+  document.getElementById("submit-button").setAttribute("aria-label", where + " submit button");
+
+  // The button records its OWN click on itself. A trusted click is dispatched at
+  // a coordinate, so a wrong frame offset would land on whatever sits at that
+  // point in the top document and still report success — reading the flag back
+  // off this element is the only thing that distinguishes the two.
+  document.getElementById("submit-button").addEventListener("click", (e) => {
+    e.currentTarget.dataset.clicked = "yes";
+  });
+
+  // Only the cross-origin instance nests, and the nested one never nests again.
+  if (where === "cross") {
+    const f = document.createElement("iframe");
+    f.title = "nested form frame";
+    f.src = "stage10-frame-form-child.html?nested=1";
+    document.getElementById("nested-slot").appendChild(f);
+  }
+</script>

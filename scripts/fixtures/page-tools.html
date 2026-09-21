@@ -1,0 +1,91 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Fixture — page-declared tools</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 2rem; }
+  code { background: #f2f2f2; padding: 0 .25rem; }
+</style>
+
+<h1>Page tools fixture</h1>
+
+<!-- A tool CALL has to be observable from outside the tool's return value, or a
+     passing check cannot tell "it ran" from "it returned the right string". -->
+<p>Status: <span id="status">idle</span></p>
+<p id="webmcp-state">webmcp: not evaluated</p>
+
+<script>
+  // Both tools are plain objects in the shape BOTH conventions use:
+  // { name, description, inputSchema, execute } — WebMCP's registerTool() and
+  // chrome-devtools-mcp's tool groups agree on it, which is why one object can
+  // be declared twice below without being written twice.
+  const setStatus = {
+    name: "fixture_set_status",
+    description: "Write a word into the page's status line.",
+    inputSchema: {
+      type: "object",
+      properties: { word: { type: "string", description: "Word to write." } },
+      required: ["word"],
+    },
+    async execute(input) {
+      const word = String((input && input.word) || "");
+      document.getElementById("status").textContent = word;
+      return { content: [{ type: "text", text: "status is now " + word }] };
+    },
+  };
+
+  const echo = {
+    name: "fixture_echo",
+    description: "Return whatever it is given, without touching the page.",
+    inputSchema: {
+      type: "object",
+      properties: { text: { type: "string", description: "Text to echo." } },
+      required: ["text"],
+    },
+    annotations: { readOnlyHint: true },
+    async execute(input) {
+      return { content: [{ type: "text", text: String((input && input.text) || "") }] };
+    },
+  };
+
+  // ── Shape 1 — WebMCP (W3C draft) ──────────────────────────────────────────
+  // The getter moved from `navigator` to `document` in the 2026-05-27 draft;
+  // `navigator.modelContext` survives as a deprecated alias (Chromium 150+), so
+  // both names are checked. SecureContext-only — this fixture is served from
+  // 127.0.0.1, which counts as secure; a plain-http site would not.
+  //
+  // `window.__fixtureWebmcp` records what happened, because the production API
+  // has no way to read back what a page registered: without this marker a
+  // verification cannot tell "the page declared nothing" from "the page
+  // declared and nobody can see it".
+  const mc = document.modelContext || navigator.modelContext;
+  window.__fixtureWebmcp = {
+    present: !!mc,
+    via: document.modelContext ? "document" : navigator.modelContext ? "navigator" : "none",
+    testingApi: typeof navigator.modelContextTesting !== "undefined",
+    registered: false,
+    error: null,
+  };
+  if (mc) {
+    try {
+      mc.registerTool(setStatus);
+      mc.registerTool(echo);
+      window.__fixtureWebmcp.registered = true;
+    } catch (e) {
+      window.__fixtureWebmcp.error = String(e);
+    }
+  }
+  document.getElementById("webmcp-state").textContent =
+    "webmcp: " + JSON.stringify(window.__fixtureWebmcp);
+
+  // ── Shape 2 — the chrome-devtools-mcp convention ──────────────────────────
+  // The page LISTENS; the reader dispatches. Nothing sits on `window` until
+  // something asks, which is why a reader that only inspects globals sees
+  // nothing here.
+  window.addEventListener("devtoolstooldiscovery", (e) => {
+    e.respondWith({
+      name: "fixture",
+      description: "Tools the fixture page offers.",
+      tools: [setStatus, echo],
+    });
+  });
+</script>

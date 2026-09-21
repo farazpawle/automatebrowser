@@ -1,0 +1,17 @@
+{
+  "name": "automatebrowser",
+  "owner": {
+    "name": "AutomateBrowser",
+    "url": "https://farazpawle.github.io/automatebrowser/"
+  },
+  "description": "AutomateBrowser — drive your real, logged-in browser from your editor.",
+  "plugins": [
+    {
+      "name": "automate-browser",
+      "source": "./",
+      "description": "The MCP server's 46 browser tools plus the automate-browser skill: tab ownership, page interaction, extraction, sessions, capture and troubleshooting.",
+      "homepage": "https://farazpawle.github.io/automatebrowser/",
+      "license": "Apache-2.0"
+    }
+  ]
+}

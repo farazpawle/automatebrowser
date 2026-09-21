@@ -1,0 +1,191 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+body {
+  margin: 0;
+  width: 260px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.status {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.status.connected {
+  color: #16a34a;
+  opacity: 1;
+}
+
+/* Live server-connection indicator */
+.server {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: #9ca3af;
+}
+
+.server.connected {
+  color: #16a34a;
+}
+.server.connected .dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 25%, transparent);
+}
+
+.server.disconnected {
+  color: #dc2626;
+}
+.server.disconnected .dot {
+  background: #dc2626;
+}
+
+.server.checking {
+  color: inherit;
+  opacity: 0.7;
+}
+
+.hint,
+.target {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.target {
+  opacity: 0.85;
+}
+
+/* Agents currently driving this browser */
+.agents {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* `display:flex` above otherwise defeats the [hidden] attribute, leaving an
+   empty box when nobody is driving — restore the hide. */
+.agents[hidden] {
+  display: none;
+}
+
+.agents-head {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.agent-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.agent-row .dot {
+  align-self: center;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #16a34a 25%, transparent);
+}
+
+.agent-name {
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.agent-tab {
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Connected-but-idle agent: muted grey dot/name, italic "idle" tag, so it stays
+   visible in the list without reading as actively driving (which is green). */
+.agent-row.idle .dot {
+  background: #9ca3af;
+  box-shadow: none;
+}
+
+.agent-row.idle .agent-name {
+  color: inherit;
+  opacity: 0.6;
+}
+
+.agent-row.idle .agent-tab {
+  font-style: italic;
+  opacity: 0.5;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.field input {
+  padding: 6px 8px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 6px;
+  font-size: 13px;
+  background: transparent;
+  color: inherit;
+}
+
+button {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.secondary {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  color: inherit;
+}
+
+.error {
+  margin: 0;
+  font-size: 12px;
+  color: #dc2626;
+  min-height: 1em;
+}

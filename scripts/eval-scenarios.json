@@ -1,0 +1,44 @@
+{
+  "$comment": [
+    "Scenarios for the agent eval harness (roadmap C24). DATA, not code: adding one",
+    "means adding an object here, never touching scripts/eval-agent.mjs.",
+    "",
+    "Each scenario probes a DIFFERENT bet the tool surface makes, and each is scored",
+    "on an OUTCOME, never on how the model phrased itself:",
+    "  answerContains  - every string must appear in the model's final text. Use only",
+    "                    for extraction tasks, where the fact IS the deliverable.",
+    "  pageContains    - the harness itself reads the page afterwards and checks it.",
+    "                    The strongest kind: the model's wording cannot fake it.",
+    "  pageMissing     - the same, inverted.",
+    "",
+    "`url` is appended to the fixture server's base address. `maxTurns` bounds a",
+    "runaway loop; hitting it is a FAIL, because a tool surface that cannot be",
+    "finished with inside a sane number of round-trips has failed the agent."
+  ],
+  "scenarios": [
+    {
+      "id": "extract-a-table",
+      "probes": "response shape (C3) — can a model find and read structured content without being told how",
+      "url": "/index.html",
+      "task": "The page in the browser has a small table of fruit. Tell me exactly how many pears there are. Answer with the number.",
+      "maxTurns": 10,
+      "assert": { "answerContains": ["7"] }
+    },
+    {
+      "id": "log-in",
+      "probes": "state tools — can a model fill and submit a real form from a snapshot alone",
+      "url": "/login.html",
+      "task": "Sign in to the page that is open in the browser. The username is ada and the password is lovelace. Submit the form.",
+      "maxTurns": 14,
+      "assert": { "pageContains": ["welcome ada"], "pageMissing": ["wrong credentials"] }
+    },
+    {
+      "id": "diagnose-a-dead-button",
+      "probes": "error ergonomics (C4 / B6) — does a refusal explain itself well enough to be diagnosed, not just retried",
+      "url": "/index.html",
+      "task": "On the page in the browser there is a button labelled 'Cannot press me' that does nothing when pressed. Work out WHY it does not work and tell me the reason in one sentence. Do not try to work around it.",
+      "maxTurns": 10,
+      "assert": { "answerContainsAny": ["disabled", "not enabled", "enabled"] }
+    }
+  ]
+}

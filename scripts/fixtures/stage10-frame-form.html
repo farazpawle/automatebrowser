@@ -1,0 +1,114 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Stage 10 embedded form</title>
+<!--
+  The parent half of the B08 fixture: one form field per FRAME KIND, so a single
+  snapshot yields a ref of each kind and the suite can prove each one is filled
+  where it lives rather than in whatever document happened to be searched.
+
+    - "Parent field"      — the top document.
+    - the same-origin frame — served from this very origin, so the top document
+      can reach its `contentDocument`. Its fields appear INLINE in the snapshot
+      with BARE refs, and the resolver has to walk into the iframe to find them.
+    - the cross-origin frame — served from the other loopback name, so page
+      JavaScript cannot reach it at all. Its fields come back as their own frame
+      block with `fN:` prefixed refs, and only an injection into that frame can
+      fill them.
+
+  Every label is unique, because the suite pulls a ref off the snapshot line that
+  mentions it and two fields sharing a name would make that lookup ambiguous.
+-->
+<style>
+  body {
+    font: 15px system-ui, sans-serif;
+    margin: 1rem;
+  }
+  iframe {
+    width: 420px;
+    height: 190px;
+    border: 1px solid #999;
+  }
+  label {
+    display: block;
+    margin: 0.4rem 0;
+  }
+</style>
+
+<h1>Embedded form routing</h1>
+
+<label>Parent field <input id="parent-field" name="parent-field" /></label>
+<label>
+  Parent choice
+  <!--
+    A <select> takes its snapshot name from its OPTIONS ("3 options"), never from
+    the <label> around it — so without this every select on the page shares one
+    name and no scenario can address a particular one.
+  -->
+  <select id="parent-choice" name="parent-choice" aria-label="Parent choice">
+    <option value="">none</option>
+    <option value="alpha">alpha</option>
+    <option value="beta">beta</option>
+  </select>
+</label>
+
+<script>
+  // What the TOP document actually received, counted per field. A reply that
+  // says "Filled 2/3" is the server describing itself; this is the page saying
+  // what reached it, and the two disagreeing is the whole point of counting.
+  // Frames keep their own counts by not being this document — a field filled in
+  // a frame contributes nothing here, which is what makes "the top field was
+  // filled and nothing else in this document was" a checkable sentence.
+  window.__stage10Events = { input: 0, change: 0, byField: {} };
+  // Reset before each scenario, so a count is of ONE fill and not of the suite
+  // so far; fills are cumulative otherwise and every later assertion drifts.
+  window.__stage10Reset = () => {
+    window.__stage10Events = { input: 0, change: 0, byField: {} };
+    return "reset";
+  };
+  for (const type of ["input", "change"]) {
+    document.addEventListener(
+      type,
+      (e) => {
+        const id = (e.target && e.target.id) || "(unidentified)";
+        const seen = window.__stage10Events;
+        seen[type]++;
+        seen.byField[id] = (seen.byField[id] || 0) + 1;
+      },
+      true, // capture, so a handler that stops propagation cannot hide a fill
+    );
+  }
+</script>
+
+<h2>Same-origin frame</h2>
+<iframe id="same-origin-frame" title="Same origin form frame" src="stage10-frame-form-child.html?origin=same"></iframe>
+
+<h2>Cross-origin frame</h2>
+<iframe id="cross-origin-frame" title="Cross origin form frame" src="__FORM_FRAME_SRC__"></iframe>
+
+<h2>srcdoc frame</h2>
+<!--
+  A `srcdoc` frame has no url of its own and inherits this document's origin. It is
+  the case that decides whether "every document is walked by its own injection" is
+  actually true: if Chrome does not enumerate this frame for `executeScript`, its
+  field would be tagged by nobody once the parent walk stopped descending. The
+  assertion in the suite is what proves it either way — the answer is not worth
+  guessing at.
+-->
+<iframe
+  id="srcdoc-frame"
+  title="Srcdoc form frame"
+  srcdoc="&lt;label&gt;srcdoc text field &lt;input id='srcdoc-field' name='text-field'&gt;&lt;/label&gt;"
+></iframe>
+
+<!--
+  A tracking pixel, the shape an ad page carries by the dozen. The snapshot walk
+  no longer descends into a frame, so it can no longer drop the marker by finding
+  nothing inside — it drops it by the frame being invisible instead. This is here
+  so that rule has something to be wrong about.
+-->
+<iframe
+  id="pixel-frame"
+  title="Tracking pixel frame"
+  style="width: 0; height: 0; border: 0; display: none"
+  srcdoc="&lt;span&gt;pixel&lt;/span&gt;"
+></iframe>

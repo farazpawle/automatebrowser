@@ -1,0 +1,62 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>AutomateBrowser integration fixture</title>
+<style>
+  body { font: 16px system-ui, sans-serif; margin: 2rem; }
+  #frame { width: 420px; height: 140px; border: 1px solid #999; }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  td, th { border: 1px solid #bbb; padding: 4px 10px; }
+</style>
+
+<h1 id="title">Fixture page</h1>
+<p id="status">idle</p>
+
+<!-- Interaction targets. The ids are never used as refs (a CSS selector is not
+     accepted by the tools) — they exist so the fixture's own JS can find them. -->
+<button id="go" type="button">Say hello</button>
+<button id="rerender" type="button">Re-render the page</button>
+<button id="blocked" type="button" disabled>Cannot press me</button>
+
+<p><a id="dl" href="/download.txt" download="fixture-download.txt">Download the file</a></p>
+
+<table id="data">
+  <tr><th>Fruit</th><th>Count</th></tr>
+  <tr><td>apples</td><td>12</td></tr>
+  <tr><td>pears</td><td>7</td></tr>
+</table>
+
+<!-- B10's radio group. One option starts SELECTED, so a "false" has something to
+     clear and a mishandled value has something to displace — with an all-empty
+     group both the bug and the fix would leave the same page behind. The
+     checkbox sits alongside deliberately: the two share one branch of the fill,
+     and the point of the group is that only the radio half was broken. Every
+     label is unique, because the suite pulls refs off snapshot lines by text. -->
+<fieldset id="speed-group">
+  <legend>Delivery speed</legend>
+  <label><input type="radio" name="speed" value="standard" checked /> Standard delivery</label>
+  <label><input type="radio" name="speed" value="express" /> Express delivery</label>
+  <label><input type="radio" name="speed" value="overnight" /> Overnight delivery</label>
+  <label><input type="checkbox" id="giftwrap" /> Gift wrap this order</label>
+</fieldset>
+
+<!-- Cross-origin on purpose: the parent is served from one host name and this
+     frame from the other, so the browser treats them as different origins even
+     though both come from the same little server. -->
+<iframe id="frame" src="__FRAME_SRC__"></iframe>
+
+<script>
+  function wire() {
+    document.getElementById("go").onclick = function () {
+      document.getElementById("status").textContent = "clicked";
+    };
+    document.getElementById("rerender").onclick = function () {
+      // Rebuild every node from the same markup: the elements are new objects
+      // with the same signature, and every data-bmcp-ref attribute is gone.
+      var main = document.body.innerHTML;
+      document.body.innerHTML = main;
+      document.getElementById("status").textContent = "re-rendered";
+      wire();
+    };
+  }
+  wire();
+</script>

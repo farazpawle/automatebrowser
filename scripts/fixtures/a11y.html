@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- No `lang` on <html>: that is html-has-lang, and it is deliberate. Every
+     failure on this page is deliberate — see the table below. Do not "fix" one
+     without changing the assertions in integration-browser.mjs that count it. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Fixture — accessibility failures</title>
+    <style>
+      body { font: 16px system-ui, sans-serif; margin: 2rem; background: #fff; }
+      /* 1.9:1 against white — well under the 4.5:1 axe requires, and far enough
+         under that antialiasing differences between machines cannot flip it. */
+      .faint { color: #c9c9c9; background: #fff; }
+      img { width: 32px; height: 32px; background: #ddd; display: inline-block; }
+    </style>
+  </head>
+  <body>
+    <h1>Accessibility fixture</h1>
+
+    <!-- Rules this page is built to fail, and the count each must report:
+           image-alt      8 elements  (exercises the 5-example cap: "+3 more")
+           label          1 element
+           button-name    1 element
+           html-has-lang  1 element   (the <html> tag above)
+           color-contrast 1 element
+         Eight images, because the per-rule example cap is 5 and a cap that is
+         never exceeded is a cap that is never tested.
+
+         axe also reports `region` and `landmark-one-main` here, because none of
+         this content sits inside a landmark. Those are NOT asserted on: they are
+         a consequence of the page being a bare fixture rather than something it
+         was built to demonstrate, and pinning them would make this suite fail
+         the day axe reorganises its structural rules. -->
+    <p>Eight images, none with alt text:</p>
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" />
+
+    <!-- An input with no label of any kind. `id` is here so the snapshot's ref
+         and axe's selector both land on the SAME element, which is what the ref
+         mapping assertion checks. -->
+    <p><input id="unlabelled-field" type="text" /></p>
+
+    <!-- A button with no accessible name: no text, no aria-label, no title. -->
+    <p><button id="nameless-button"></button></p>
+
+    <p class="faint">Grey text on white, below the contrast threshold.</p>
+  </body>
+</html>

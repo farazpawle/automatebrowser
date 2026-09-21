@@ -1,0 +1,44 @@
+name: Integration (real browser)
+
+# NOT on push, deliberately. This job downloads a browser and drives it; the
+# suite it runs changes rarely, so paying that on every commit would tax every
+# push for almost nothing. Nightly catches drift; the manual trigger covers the
+# times you actually want it now.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  integration:
+    name: Real browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # The extension is what is under test: build it from source, never trust a
+      # committed artifact (the suite refuses a stale one anyway).
+      - name: Build the extension
+        working-directory: Chrome-extension
+        run: |
+          npm ci
+          npm run compile
+          npm run build
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:integration
+
+      # The checks that used to be `[User]`. Same builds, same launched-browser
+      # trick, so it rides along here rather than paying for its own job.
+      #
+      # One of its assertions is deliberately inverted: it asserts that Chrome
+      # STILL hides the `Security` CDP domain from extensions, and so FAILS on
+      # the day that stops being true. That is the intended signal, not a flake —
+      # it means D21 has become buildable. Needs `openssl`, which ubuntu-latest
+      # already has, for the self-signed certificate it serves itself.
+      - run: npm run test:live

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AutomateBrowser</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>AutomateBrowser</h1>
+
+      <div id="server" class="server checking">
+        <span id="dot" class="dot"></span>
+        <span id="server-text" class="server-text">Checking server…</span>
+      </div>
+
+      <p id="hint" class="hint">
+        Connects automatically. The agent drives the active tab by default — or
+        pin a specific tab below.
+      </p>
+
+      <p id="target" class="target"></p>
+
+      <div id="agents" class="agents" hidden></div>
+
+      <label class="field">
+        <span>Label (optional)</span>
+        <input id="label" type="text" placeholder="e.g. Work Chrome" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>Auth token (optional)</span>
+        <input id="token" type="password" placeholder="match server AUTOMATE_BROWSER_TOKEN" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>Editor on another computer (optional)</span>
+        <input id="relay-host" type="text" placeholder="leave empty for this computer" autocomplete="off" />
+        <small>Type that computer's address to let it drive this browser. Requires an auth token above.</small>
+      </label>
+
+      <button id="connect" class="primary">Pin this tab</button>
+      <button id="disconnect" class="secondary" hidden>Follow active tab</button>
+      <p id="error" class="error"></p>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

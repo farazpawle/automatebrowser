@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@repo/config/app.config": ["./src/vendor/config"],
+      "@repo/config/mcp.config": ["./src/vendor/config"],
+      "@repo/messaging/types": ["./src/vendor/messaging/types"],
+      "@repo/types/messages/ws": ["./src/vendor/types/messages-ws"],
+      "@repo/types/mcp/tool": ["./src/vendor/types/mcp-tool"],
+      "@r2r/messaging/ws/sender": ["./src/vendor/messaging/ws-sender"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

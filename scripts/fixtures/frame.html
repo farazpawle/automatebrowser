@@ -1,0 +1,11 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Fixture frame</title>
+<style>body { font: 15px system-ui, sans-serif; }</style>
+<p id="frame-status">frame idle</p>
+<!-- The click renames the BUTTON, not just the paragraph: a snapshot lists
+     interactive elements and their accessible names, so this is the change a
+     caller outside the frame can actually observe. -->
+<button id="frame-go" type="button" onclick="this.textContent='Frame button was pressed'; document.getElementById('frame-status').textContent='frame clicked'">
+  Press me inside the frame
+</button>

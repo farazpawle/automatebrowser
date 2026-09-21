@@ -1,0 +1,22 @@
+{
+  // The test suite runs through tsx, which STRIPS types without checking them —
+  // so without this a test file could carry a type error and still pass, which
+  // is half a safety net. The main tsconfig cannot cover tests/: its rootDir is
+  // src/ and its output is the shipped bundle.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // The base pins rootDir to src/ for the shipped build; tests live beside it.
+    "rootDir": ".",
+    "types": ["node"],
+    // The build scripts a test imports. `checkJs` stays off — this is here so
+    // tsc can READ their JSDoc types, not so it starts type-checking scripts/.
+    "allowJs": true
+  },
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/lib/manifest-versions.mjs",
+    "scripts/generate-browser-contract.mjs"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "automatebrowser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "--prefix",
+        "${PLUGIN_DATA}",
+        "--package",
+        "@automatebrowser/mcp@1.0.1",
+        "mcp-server-automatebrowser"
+      ]
+    }
+  }
+}

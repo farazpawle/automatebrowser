@@ -1,0 +1,11 @@
+{
+  "name": "automate-browser",
+  "version": "1.0.1",
+  "description": "Drive your real, logged-in browser from Gemini CLI — 46 tools for navigation, interaction, extraction, sessions, capture and diagnostics.",
+  "mcpServers": {
+    "automatebrowser": {
+      "command": "npx",
+      "args": ["-y", "--package", "@automatebrowser/mcp@1.0.1", "mcp-server-automatebrowser"]
+    }
+  }
+}

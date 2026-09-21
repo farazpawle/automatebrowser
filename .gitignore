@@ -1,0 +1,55 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Local env files. The bare `.env` and `.env.production` were NOT covered before,
+# so a plain one would have been committed. Ignore every variant, then allow the
+# checked-in example back so newcomers still get a template.
+.env
+.env.*
+!.env.example
+
+# Testing
+coverage
+
+# Turbo
+.turbo
+
+# Vercel
+.vercel
+
+# Build Outputs
+.next/
+out/
+build
+dist
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Misc
+.DS_Store
+*.pem
+# Signing material must never land in the repo — the MCP registry publishing key
+# lives in ~/.mcp-publisher/. This is belt-and-braces for a stray copy.
+*private-key*
+
+# Local reference copies of other extensions (~3.5k files) — kept for comparison
+# while porting behaviour across, never part of this project's source.
+BKP/
+
+# Tooling artifacts (knowledge graph / command tooling)
+.commandcode/
+.local-backups/
+*.tsbuildinfo
+# The code-graph database. This was only ever excluded by .git/info/exclude, which
+# is local to one clone and never travels — so any other checkout would have
+# committed it. Same reason for the per-developer Claude settings.
+.gitnexus/
+.claude/settings.local.json

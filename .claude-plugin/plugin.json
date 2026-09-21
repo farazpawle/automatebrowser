@@ -1,0 +1,25 @@
+{
+  "name": "automate-browser",
+  "displayName": "AutomateBrowser",
+  "version": "1.0.1",
+  "description": "Drive your real, logged-in browser from your editor — 46 tools, plus the automate-browser skill covering tab ownership, page interaction, extraction, sessions, capture and troubleshooting.",
+  "author": {
+    "name": "AutomateBrowser"
+  },
+  "keywords": ["browser", "automation", "mcp", "chrome", "scraping"],
+  "mcpServers": {
+    "automatebrowser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package",
+        "@automatebrowser/mcp@1.0.1",
+        "mcp-server-automatebrowser"
+      ],
+      "env": {
+        "AUTOMATE_BROWSER_CLIENT_NAME": "Claude"
+      }
+    }
+  }
+}

@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  server:
+    name: Server
+    runs-on: ubuntu-latest
+    # This job never drives a browser — skip Puppeteer's Chrome download so adding
+    # the integration suite did not slow down the gate that runs on every push.
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Before the typechecks, deliberately. The extension's copy of the command
+      # contract is GENERATED from the server's schemas, and a stale one is the
+      # one kind of drift neither typecheck can see: this job compiles the server
+      # against the source, the `extension` job below compiles the handlers
+      # against the committed artifact, and both pass while the two disagree.
+      # Checking (not regenerating) is the point — a gate that repairs what it
+      # finds reports success on a broken tree and leaves the drift for the next
+      # person's push.
+      - name: Generated browser contract is up to date
+        run: npm run contracts:check
+      - run: npm run typecheck
+      # The unit suite (plan 09, D2). It needs no browser, no relay and no model,
+      # so it runs first and fails in under a second — everything below it costs
+      # a build or a network call.
+      - run: npm run typecheck:tests
+      # The linter and the formatter (plan 09, D14). Both sit here, above the
+      # build, because they need nothing but source and fail in seconds — the
+      # gates below all cost a compile or a network call.
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm test
+      - run: npm run build
+      # These read dist/, so they must follow the build.
+      - run: npm run verify:release
+      - run: npm run tokens
+      # The tool reference is machine-maintained: regenerating it must be a no-op
+      # on a correct tree. A diff here means someone edited a generated table by
+      # hand, or added a tool without updating scripts/generate-docs.mjs.
+      #
+      # This diffed README ALONE until 2026-09-01, which made it blind to the file
+      # that matters most. The generator had been writing the shipped skill's tool
+      # table since 2026-08-31, so a stale one could sit committed indefinitely:
+      # the generator quietly fixed it in CI's own checkout, no diff was ever
+      # taken, and every user kept installing the wrong version.
+      - run: npm run docs:generate
+      #
+      # The root manifests joined this list on 2026-09-07 for the same reason:
+      # docs:generate rewrites their tool count, so a stale one is invisible to
+      # every other gate. A path that the generator writes and this line omits is
+      # the whole bug, twice over.
+      - name: Generated docs, shipped skill and distribution manifests are up to date
+        run: git diff --exit-code -- README.md skills/ .claude-plugin/ plugin.json gemini-extension.json docs/index.html
+      - run: npm run smoke
+      - run: npm audit --omit=dev
+
+  # The relay is the only process here that is MEANT to outlive its clients — a
+  # singleton that survives IDE restarts and is expected to run for days. Every
+  # other process dies with its client, which bounds even a real leak to one
+  # session. So this watches the one place slow growth is both plausible and
+  # expensive, and nothing watched it before 2026-09-10.
+  #
+  # Its own job, not a step in `server`, for two reasons: it runs in parallel so
+  # it costs no wall-clock, and a noisy-neighbour flake on a shared runner fails
+  # HERE instead of masking the lint/test/build results everyone actually reads.
+  relay-memory:
+    name: Relay memory
+    runs-on: ubuntu-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      # 600 connections rather than the script's default 160. Sensitivity scales
+      # with churn, and the whole run costs ~15s — the default is for a quick
+      # local check, this is the one that should catch something.
+      WAVES: "20"
+      PEERS: "15"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # It profiles dist/relay.js, so the build is not optional here.
+      - run: npm run build
+      - run: npm run memory:relay
+
+  extension:
+    name: Extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Chrome-extension
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Chrome-extension/package-lock.json
+      - run: npm ci
+      - run: npm run compile
+      - run: npm run build
+      - run: npm audit --omit=dev
