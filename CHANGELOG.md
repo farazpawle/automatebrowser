@@ -21,10 +21,13 @@ Dates are the date of the work, not of a release.
 
 ### Added
 
-- **Release downloads.** Every GitHub release now carries two files: `automatebrowser-<version>.mcpb`
-  for a one-click Claude Desktop install, and `automate-browser-skill-<version>.zip`, the agent skill
-  for any agent's skills folder. `1.0.1` got them too. The browser extension is still a separate
-  install.
+- **Release downloads.** Every GitHub release now carries two files: `automatebrowser.mcpb` for a
+  one-click Claude Desktop install, and `automate-browser-skill.zip`, the agent skill for any agent's
+  skills folder. `1.0.1` got them too. The names carry no version, so
+  `releases/latest/download/<name>` always fetches the newest. The browser extension is still a
+  separate install.
+- **Download section on the website.** A Download menu item, a hero button and a section that
+  downloads both files in one click, and points to the extension setup.
 
 ## [1.0.1] — 2026-09-21
 

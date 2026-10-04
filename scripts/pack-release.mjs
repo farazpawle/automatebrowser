@@ -1,8 +1,11 @@
 /**
  * Builds the two files a GitHub release offers for download, into `release/`:
  *
- *   automatebrowser-<version>.mcpb          one-click install for Claude Desktop
- *   automate-browser-skill-<version>.zip    the shipped agent skill, for any skills folder
+ *   automatebrowser.mcpb          one-click install for Claude Desktop
+ *   automate-browser-skill.zip    the shipped agent skill, for any skills folder
+ *
+ * The names carry no version on purpose: the website links to
+ * releases/latest/download/<name>, which only stays valid if the name never changes.
  *
  * Run `npm run build` first — this packs dist/ as it stands. Used by
  * .github/workflows/release.yml and runnable locally to check a bundle before tagging.
@@ -44,12 +47,12 @@ const run = (cmd, cwd = root) => execSync(cmd, { cwd, stdio: "inherit" });
 console.log(`[pack-release] ${version}: installing production dependencies into the bundle`);
 run("npm ci --omit=dev --ignore-scripts --no-audit --no-fund", stage);
 
-const mcpb = join(out, `automatebrowser-${version}.mcpb`);
+const mcpb = join(out, "automatebrowser.mcpb");
 run(`npx -y ${MCPB_CLI} pack "${stage}" "${mcpb}"`);
 
 // `zip` on Linux/macOS. Windows has no `zip`, but its own bsdtar writes one with -a — named by
 // full path, because Git Bash puts a GNU tar (which cannot) first on PATH.
-const skillZip = join(out, `automate-browser-skill-${version}.zip`);
+const skillZip = join(out, "automate-browser-skill.zip");
 const skillsDir = join(root, "skills");
 if (process.platform === "win32") {
   const tar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");

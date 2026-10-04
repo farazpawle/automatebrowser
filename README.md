@@ -313,11 +313,12 @@ yet — that is the honest state of it, not a step you can skip.
 > Already have a hand-written `automatebrowser` entry? **Remove it first** — the plugin registers
 > the server itself, and two entries in one client means two controllers and duplicate tools.
 
-**Claude Desktop** — download `automatebrowser-<version>.mcpb` from the
-[latest release](https://github.com/farazpawle/automatebrowser/releases/latest) and open it, or drag it
-onto **Settings → Extensions**. The bundle carries its own dependencies, so nothing else installs
-first. It is the server only: the skill is the separate `automate-browser-skill-<version>.zip` on the
-same release (see [Skills that ship with it](#skills-that-ship-with-it)).
+**Claude Desktop** — download
+[`automatebrowser.mcpb`](https://github.com/farazpawle/automatebrowser/releases/latest/download/automatebrowser.mcpb)
+(always the latest release; also on the [website](https://farazpawle.github.io/automatebrowser/#download))
+and open it, or drag it onto **Settings → Extensions**. The bundle carries its own dependencies, so
+nothing else installs first. It is the server only: the skill is the separate
+`automate-browser-skill.zip` on the same release (see [Skills that ship with it](#skills-that-ship-with-it)).
 
 **Any other editor** — register the published package as a stdio server. The command it runs is:
 
@@ -2279,7 +2280,7 @@ checkout.
 
 **Any other agent, or no plugin system at all** — every
 [release](https://github.com/farazpawle/automatebrowser/releases/latest) carries
-`automate-browser-skill-<version>.zip`. Unzip it into the agent's skills folder (`~/.claude/skills/`
+[`automate-browser-skill.zip`](https://github.com/farazpawle/automatebrowser/releases/latest/download/automate-browser-skill.zip). Unzip it into the agent's skills folder (`~/.claude/skills/`
 for Claude Code, or wherever your client looks); it unpacks to one `automate-browser/` folder. This
 copies the skill only, so register the server as well.
 
