@@ -127,6 +127,9 @@ export const selectClient: Tool = {
       openWorldHint: true,
     },
   },
+  // The footer's console probe is a claiming send: it opened a blank tab, which
+  // is exactly what the description above promises selecting does not do.
+  skipConsoleDelta: true,
   handle: async (context, params) => {
     const args = SelectArgs.parse(params);
     const info = args.force ? await context.forceClaim(args) : context.setActive(args);
@@ -158,6 +161,9 @@ export const forceClaim: Tool = {
       openWorldHint: true,
     },
   },
+  // The claim is the relay lease, not a tab, and no page changed for the footer
+  // to report on; its probe would only open a tab the agent never asked for.
+  skipConsoleDelta: true,
   handle: async (context, params) => {
     const args = SelectArgs.parse(params);
     const info = await context.forceClaim(args);

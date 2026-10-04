@@ -28,6 +28,18 @@ export async function waitForCondition(
         const box = !!(he.offsetWidth || he.offsetHeight || el.getClientRects().length);
         return box && getComputedStyle(he).visibility !== "hidden";
       };
+      // A `/.../` pattern is a regex; anything else, or a regex that does not
+      // compile, is a substring (F13: `text` takes the same form as `urlPattern`).
+      const matches = (hay: string, pat: string): boolean => {
+        if (pat.length > 1 && pat.startsWith("/") && pat.endsWith("/")) {
+          try {
+            return new RegExp(pat.slice(1, -1)).test(hay);
+          } catch {
+            /* fall through to a substring */
+          }
+        }
+        return hay.includes(pat);
+      };
       const check = (): boolean => {
         if (a.selector) {
           const el = document.querySelector(a.selector);
@@ -36,18 +48,13 @@ export async function waitForCondition(
           if (state === "hidden") return !isVisible(el);
           return isVisible(el); // visible (default)
         }
-        if (a.text) return !!document.body && document.body.innerText.includes(a.text);
-        if (a.urlPattern) {
-          const u = location.href;
-          if (a.urlPattern.length > 1 && a.urlPattern.startsWith("/") && a.urlPattern.endsWith("/")) {
-            try {
-              return new RegExp(a.urlPattern.slice(1, -1)).test(u);
-            } catch {
-              return u.includes(a.urlPattern);
-            }
-          }
-          return u.includes(a.urlPattern);
+        if (a.text) {
+          // "Gone" is the only useful reading of hidden/detached for text: wait
+          // for "Loading" to clear, or "Result: n/a" to be replaced.
+          const has = !!document.body && matches(document.body.innerText, a.text);
+          return state === "detached" || state === "hidden" ? !has : has;
         }
+        if (a.urlPattern) return matches(location.href, a.urlPattern);
         return false;
       };
       return new Promise<boolean>((resolve, reject) => {

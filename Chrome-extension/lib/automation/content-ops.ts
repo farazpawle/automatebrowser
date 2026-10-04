@@ -154,12 +154,23 @@ export async function getHtml(
 
 // ── find ──────────────────────────────────────────────────────────────────────
 
+type FindMatch = {
+  ref: string;
+  role: string;
+  name: string;
+  tag: string;
+  /** Only the data-carrying attributes that are present (F11). */
+  attrs?: Record<string, string>;
+  /** Not drawn - only an explicit selector returns these. */
+  hidden?: true;
+};
+
 function findFn(
   text: string | null,
   role: string | null,
   selector: string | null,
   max: number,
-): { matches: Array<{ ref: string; role: string; name: string; tag: string }> } {
+): { matches: FindMatch[] } {
   const REF_ATTR = "data-bmcp-ref";
 
   // ── stable refs (B12) ──────────────────────────────────────────────────────
@@ -232,6 +243,16 @@ function findFn(
     const st = getComputedStyle(he);
     return st.visibility !== "hidden" && st.display !== "none";
   };
+  // The data a page keeps in attributes, not text: a <relative-time>'s date,
+  // a <meta>'s value, a link's target (F11).
+  const attrsOf = (el: Element): { attrs?: Record<string, string> } => {
+    const attrs: Record<string, string> = {};
+    for (const n of ["id", "href", "title", "datetime", "content"]) {
+      const v = el.getAttribute(n);
+      if (v) attrs[n] = clip(v);
+    }
+    return Object.keys(attrs).length ? { attrs } : {};
+  };
   const roleOf = (el: Element): string => {
     const explicit = el.getAttribute("role");
     if (explicit) return explicit;
@@ -265,30 +286,70 @@ function findFn(
     return clip((he.innerText || he.textContent || "") as string);
   };
 
+  const CONTROLS = ["link", "button", "checkbox", "radio", "combobox", "textbox", "menuitem", "tab", "option", "switch"];
+  // An icon-only control is named by its image (F12). Its id and title already
+  // print as attributes, so they are not repeated as a name here.
+  const altOf = (el: Element): string => clip(el.querySelector("img[alt]")?.getAttribute("alt") || "");
+
   const candidates: Element[] = selector
     ? Array.from(document.querySelectorAll(selector))
     : Array.from(document.querySelectorAll("*"));
   const needle = text ? text.toLowerCase() : null;
-  const matches: Array<{ ref: string; role: string; name: string; tag: string }> = [];
+  const hits: Array<{ el: Element; role: string; name: string; hidden: boolean }> = [];
   for (const el of candidates) {
-    if (matches.length >= max) break;
-    if (!isVisible(el)) continue;
+    // A text search scans everything: the cut comes after the innermost filter.
+    if (!needle && hits.length >= max) break;
+    // An explicit selector names what it wants - a <meta> in <head>, a hidden
+    // input - and those are never drawn (F11). Text and role searches stay
+    // with what a person can see.
+    const visible = isVisible(el);
+    if (!visible && !selector) continue;
     const r = roleOf(el) || el.tagName.toLowerCase();
     if (role && r.toLowerCase() !== role.toLowerCase()) continue;
-    const name = nameOf(el);
+    const name = nameOf(el) || (CONTROLS.includes(r) ? altOf(el) : "");
     if (needle) {
       const hay = (name + " " + (el.getAttribute("value") || "")).toLowerCase();
       if (!hay.includes(needle)) continue;
     }
-    matches.push({ ref: refFor(el), role: r, name, tag: el.tagName.toLowerCase() });
+    hits.push({ el, role: r, name, hidden: !visible });
   }
+
+  // Text is matched against the whole subtree, so every ancestor of the real
+  // target matches too (html, body, wrappers - F10). Keep the innermost, except
+  // that a control absorbs the label text inside it: <button><span>Go</span>
+  // </button> is the button, not the span.
+  let kept = hits;
+  if (needle) {
+    const hitSet = new Set(hits.map((x) => x.el));
+    const inControl = (el: Element): boolean => {
+      for (let p = el.parentElement; p; p = p.parentElement) {
+        if (hitSet.has(p) && CONTROLS.includes(roleOf(p))) return true;
+      }
+      return false;
+    };
+    kept = hits.filter((x) => !inControl(x.el));
+    const outer = new Set<Element>();
+    for (const x of kept) {
+      for (let p = x.el.parentElement; p && !outer.has(p); p = p.parentElement) outer.add(p);
+    }
+    kept = kept.filter((x) => !outer.has(x.el));
+  }
+  // Refs only for what is returned - a dropped wrapper is left untagged.
+  const matches = kept.slice(0, max).map((x) => ({
+    ref: refFor(x.el),
+    role: x.role,
+    name: x.name,
+    tag: x.el.tagName.toLowerCase(),
+    ...attrsOf(x.el),
+    ...(x.hidden ? { hidden: true as const } : {}),
+  }));
   return { matches };
 }
 
 export async function find(
   tabId: number,
   args: { text?: string; role?: string; selector?: string; max?: number },
-): Promise<Array<{ ref: string; role: string; name: string; tag: string }>> {
+): Promise<FindMatch[]> {
   if (!args.text && !args.role && !args.selector) {
     throw new Error("browser_find needs at least one of: text, role, selector.");
   }

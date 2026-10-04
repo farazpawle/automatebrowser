@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "automatebrowser",
+  "display_name": "AutomateBrowser",
+  "version": "1.0.1",
+  "description": "Drive your real, logged-in Chrome or Edge tab from Claude. Needs the AutomateBrowser browser extension.",
+  "long_description": "AutomateBrowser lets Claude click, type, read and screenshot pages in the browser you already use, with your logins intact. This bundle is the server half only: install the AutomateBrowser extension in Chrome or Edge as well, or every tool answers that no browser is connected. Setup: https://farazpawle.github.io/automatebrowser/",
+  "author": {
+    "name": "AutomateBrowser",
+    "url": "https://farazpawle.github.io/automatebrowser/"
+  },
+  "homepage": "https://farazpawle.github.io/automatebrowser/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farazpawle/automatebrowser"
+  },
+  "support": "https://github.com/farazpawle/automatebrowser/issues",
+  "license": "Apache-2.0",
+  "icon": "icon.png",
+  "keywords": ["browser", "automation", "chrome", "edge", "scraping"],
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"]
+    }
+  },
+  "tools_generated": true,
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=18.0.0" }
+  }
+}

@@ -1,5 +1,5 @@
 /**
- * One version number, five files that repeat it (plan 09, D12).
+ * One version number, six files that repeat it (plan 09, D12; the MCPB manifest joined 2026-10-04).
  *
  * Every distribution manifest restates `package.json`'s version — some as a
  * `version` field, some inside an `npx --package @automatebrowser/mcp@X` argument
@@ -24,6 +24,7 @@ export const VERSIONED_MANIFESTS = [
   "plugin.json",
   "mcp.json",
   ".claude-plugin/plugin.json",
+  "mcpb/manifest.json",
 ];
 
 /** Matches the pinned npm spec wherever it appears — args arrays included. */

@@ -97,11 +97,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-/** Does a drive error indicate the targeted tab no longer exists? */
-function isTabGone(msg: string): boolean {
-  return /no tab with id|no drivable tab|tab .*not found|invalid tab id|cannot access a chrome/i.test(
-    msg,
-  );
+/**
+ * Does a drive error indicate the targeted tab no longer exists?
+ *
+ * "Cannot access a chrome:// URL" is NOT one: it means the tab is a settings
+ * page, still open. Matching it dropped a live tab and told the agent it had
+ * closed (plan 14, F3 — benchmark T37).
+ */
+export function isTabGone(msg: string): boolean {
+  return /no tab with id|no drivable tab|tab .*not found|invalid tab id/i.test(msg);
 }
 
 function isIdentifyFrame(

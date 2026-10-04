@@ -18,7 +18,7 @@
 | You want | Use | Why not the others |
 |---|---|---|
 | The visible text of the page | `browser_read_page` | Cheapest. Already stripped of markup. `format: "markdown"` keeps headings and links; `maxLength` caps it. |
-| A few elements matching text, role or selector | `browser_find` | Returns `ref`s you can act on, and is far smaller than a snapshot |
+| A few elements matching text, role or selector — or one value kept in an attribute or `<head>` | `browser_find` | Returns `ref`s you can act on, and is far smaller than a snapshot. Each match prints its `id`, `href`, `title`, `datetime` and `content` when present, so `{ selector: "meta[name=user-login]" }` or a `<relative-time>` answers without `get_html` |
 | A table, repeated cards, any structure | `browser_eval` with a **function** | Returns real JSON. Do the mapping in the page, not in your head. |
 | The raw markup of one element | `browser_get_html { ref }` | Whole-page HTML is almost never what you want |
 | The page's interactive shape | `browser_snapshot` | The most expensive call here — for finding things to click, not for reading |

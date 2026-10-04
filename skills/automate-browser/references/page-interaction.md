@@ -42,8 +42,15 @@ browser_find { role: "button", max: 5 }
 browser_find { selector: "form#checkout input" }
 ```
 
-It returns matching elements with refs you can act on immediately. Reach for a full snapshot only
-when you genuinely need to survey an unfamiliar page.
+It returns matching elements with refs you can act on immediately. A `text` search returns the
+innermost element holding the text (a button keeps the label span inside it), never the wrappers
+around it. With a `selector`, elements that are not drawn come back too — a `<meta>`, a hidden
+input — marked `(hidden)`; read them, do not click them. Reach for a full snapshot only when you
+genuinely need to survey an unfamiliar page.
+
+An icon-only control with no text is named by its `title`, an inner image's `alt`, or failing those
+its `#id` (`- button "#buttonGenerate"`). An `#id` names the element, not its purpose — confirm before
+clicking. `browser_find` uses only the image `alt` as a name; `id` and `title` print as attributes.
 
 `browser_snapshot { verbose: true }` returns the fuller tree; `{ filePath }` writes it to disk instead
 of into your context.
@@ -54,12 +61,18 @@ of into your context.
 |---|---|---|
 | `browser_click` | `element`, `ref` — or `x`, `y` | `dblClick: true` for double-click |
 | `browser_type` | `element`, `ref`, `text`, `submit` | `submit` is required — say whether to press Enter |
-| `browser_hover` | `element`, `ref` | For menus that open on hover |
+| `browser_hover` | `element`, `ref` | Opens menus driven by page scripts. CSS-only `:hover` needs advanced mode, tab visible |
 | `browser_select_option` | `element`, `ref`, `values` | `values` is an array, even for one |
 | `browser_drag` | `startElement`, `startRef`, `endElement`, `endRef` | Both ends need a description |
 | `browser_clear` | `ref` | Empties an input properly, better than typing over |
 | `browser_press_key` | `key` | `"Enter"`, `"Control+A"`, `"Escape"` — no ref, goes to the page |
 | `browser_scroll` | — | `{ ref }` scrolls to an element, or `{ dx, dy }`, or `{ to: "bottom" }` |
+
+**"No change seen on the page"** after a click means the page showed no reaction: no content change,
+no checkbox flip, no focus move, no request, no navigation. Some pages act only on a real click — if
+the click should have done something, enable `browser_advanced_mode` with the tab visible and click
+again, then turn it off. A click that works silently (nothing on screen changes) draws the same note,
+so check before concluding it failed. Only a click by ref carries it; no note is not proof it worked.
 
 ## Filling a form in one call
 
@@ -78,8 +91,8 @@ half-submits a form.
 
 **Read the count, not the error flag.** A fill where some fields landed and some did not is neither
 a success nor a failure, and the flag alone cannot say so. It returns `outcome: "partial"`, the
-`Filled 2/3 field(s)` line with a `✗ ref: reason` for each field that refused, and the same thing
-structured as `{ filled, total, errors }`. Only a fill where **nothing** landed sets `isError`.
+`Filled 2/3 field(s)` line with a `✗ ref: reason` for each field that refused. Only a fill where
+**nothing** landed sets `isError`.
 Acting on the flag without reading the count is how a form gets submitted a third empty.
 
 **A checkbox or radio takes a boolean and nothing else** — `"true"` or `"false"` (also `1`/`0`,
@@ -128,7 +141,9 @@ In order of preference:
    `browser_select_option` and `browser_drag`, but **not** `press_key`, `fill_form`, `clear` or
    `scroll`.
 2. **`browser_wait_for`** — waits for a real condition: `{ selector }`, `{ text }`, `{ urlPattern }`,
-   or `{ state }`. This is the right tool when a site swaps content without navigating.
+   or `{ state }`. This is the right tool when a site swaps content without navigating. `text` takes
+   `/regex/` (`/Result: \d+/` skips a "Result: n/a" placeholder that a plain `"Result:"` matches at
+   once); with `state: "detached"` it waits for the text to go.
 3. **`settleMs` / `waitUntil`** on the action — tune how long it waits for the page to go quiet after
    acting.
 4. **`browser_wait { time }`** — a blind sleep. Last resort. It is either too short and flaky or too
@@ -142,13 +157,19 @@ request, and saying these six times over cost 10% of the entire tool budget. Rea
 | | Navigation (`browser_navigate`, back/forward) | Interactions (click, type, hover, …) |
 |---|---|---|
 | `includeSnapshot` | **true** — a snapshot comes back unasked | **false** — the reply stays lean |
-| `waitUntil` | **`load`** | **`auto`** |
+| `waitUntil` | **`auto`** — the load event, then 0.3 s with no DOM change (cap 1.5 s) | **`auto`** |
 | `settleMs` | 15 s cap for navigate, 10 s for back/forward | **2000** |
 
-So you rarely need to set any of them. Set `includeSnapshot: false` on a navigation whose page you
+So you rarely need to set any of them. A navigation's `auto` costs about 0.3 s over `load` even on a
+still page; pass `waitUntil: "load"` when you will wait for something specific yourself.
+`networkidle` waits for 0.5 s with no request open (cap 5 s — a page with an open socket always hits
+it). Set `includeSnapshot: false` on a navigation whose page you
 are not about to touch; set `waitUntil: "none"` when you want the reply immediately and will wait for
 a real condition yourself; and prefer an explicit `browser_snapshot` when what you actually want is
 fresh refs, or `browser_eval` when one value would answer the question.
+
+A click (or `submit: true`) that **leaves the page** returns as soon as the new page starts loading,
+with `navigated: true` and `urlAfter`. It no longer hangs to the deadline and gets blamed on a dialog.
 
 ### Reading a navigation's `settled`
 
@@ -165,6 +186,8 @@ which straight after a reload still describes the page you are leaving. Three th
 - **`settled: false` is not a failure.** It means the load was not seen to finish inside what you
   allowed. Read `urlAfter` and `navigated` for what actually happened, then take a fresh snapshot
   before you use any ref.
+- **A page that did not load is a failure**: `NAVIGATION_FAILED`, with Chrome's `net::ERR_…`. Do not
+  retry blindly — check the url; an http site Chrome upgraded to https needs a person to allow it.
 
 `settleMs` only ever shortens the wait (15 s for `browser_navigate`, 10 s for back/forward). The one
 exception to `waitUntil: "none"` returning immediately is `initScript`: the script has to stay

@@ -105,8 +105,8 @@ browser_navigate { url: "...", handleBeforeUnload: "accept" }
 
 ## Restricted pages
 
-`chrome://` URLs, the extension store, the PDF viewer and other browser-internal pages refuse
-injection — you get `RESTRICTED_PAGE`. There is no workaround. Open a normal `http(s)` page.
+`chrome://` settings pages, the extension store, the PDF viewer: `RESTRICTED_PAGE`, from navigate,
+new_tab and screenshot alike. No workaround — ask the person to look, or open an `http(s)` page.
 
 ## When something works signed in and fails signed out
 

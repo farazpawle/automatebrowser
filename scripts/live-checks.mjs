@@ -565,6 +565,112 @@ async function a8(base, secureBase) {
   await A.call("browser_advanced_mode", { enable: false });
 }
 
+/**
+ * F8 — browser_switch_tab brings back a MINIMISED window and says the page shows.
+ *
+ * Minimised from outside the extension (puppeteer's own CDP session), the way a
+ * person minimises it, then switched to through the tool. LIMIT: a throwaway
+ * Chrome has no Windows focus-stealing protection to fight; whether the user's
+ * real window comes to the FRONT is recorded by hand in the plan (8.12).
+ */
+/** The window holding our tab, driven from OUTSIDE the extension, the way a person does it. */
+async function ourWindow(pathPart) {
+  const page = (await browser.pages()).find((p) => p.url().includes(pathPart));
+  if (!page) return null;
+  const s = await page.createCDPSession();
+  const { windowId } = await s.send("Browser.getWindowForTarget");
+  return {
+    stateOf: async () => (await s.send("Browser.getWindowBounds", { windowId })).bounds.windowState,
+    minimise: async () => {
+      await s.send("Browser.setWindowBounds", { windowId, bounds: { windowState: "minimized" } });
+      await sleep(800);
+    },
+    detach: () => s.detach(),
+  };
+}
+
+/** Our own tab's id, from the tab list. */
+async function ourTabId(pathPart) {
+  const tabs = await A.call("browser_list_tabs", {});
+  return (tabs?.result?.structuredContent?.tabs ?? []).find((t) => String(t.url).includes(pathPart))
+    ?.tabId;
+}
+
+async function f8(base) {
+  await A.call("browser_navigate", { url: base + "/plain.html", includeSnapshot: false });
+  const win = await ourWindow("/plain.html");
+  if (!win) {
+    assert("F8 found our tab among the launched browser's pages", false);
+    return;
+  }
+  const { stateOf } = win;
+  const visibility = async () =>
+    text(await A.call("browser_eval", { expression: "document.visibilityState" }));
+
+  await win.minimise();
+  const before = await stateOf();
+  assert("F8 the window really is minimised before the switch", before === "minimized", before);
+  console.log("      page visibility while minimised: " + (await visibility()).slice(0, 80));
+
+  const sw = await A.call("browser_switch_tab", { tabId: await ourTabId("/plain.html") });
+  const swText = text(sw);
+  assert("F8 switch_tab succeeds", !isErr(sw), swText.slice(0, 300));
+  assert("F8 the reply says the page is visible", /the page is visible/.test(swText), swText);
+  const after = await stateOf();
+  assert("F8 the window is no longer minimised", after !== "minimized", after);
+  assert("F8 the page agrees it is visible", /visible/.test(await visibility()));
+  await win.detach();
+}
+
+/**
+ * F9 — a page-speed trace on a hidden page refuses at once instead of recording
+ * ~11 s for nothing; after browser_switch_tab the same call measures an LCP.
+ */
+async function f9(base) {
+  await A.call("browser_navigate", { url: base + "/slow.html", includeSnapshot: false });
+  await sleep(1500);
+  const win = await ourWindow("/slow.html");
+  if (!win) {
+    assert("F9 found our tab among the launched browser's pages", false);
+    return;
+  }
+  await win.minimise();
+
+  const t0 = Date.now();
+  const hidden = await A.call("browser_perf_trace", {
+    action: "start",
+    reload: true,
+    autoStop: true,
+  });
+  const ms = Date.now() - t0;
+  const hiddenText = text(hidden);
+  assert(
+    "F9 a trace on a hidden page is refused as TAB_HIDDEN",
+    isErr(hidden) && hiddenText.startsWith("TAB_HIDDEN"),
+    hiddenText.slice(0, 400),
+  );
+  assert("F9 ... in under 1 s, not after recording", ms < 1000, ms + " ms");
+  assert(
+    "F9 ... naming browser_switch_tab as the way out",
+    isErr(hidden) && /browser_switch_tab/.test(hiddenText),
+    hiddenText,
+  );
+
+  await A.call("browser_switch_tab", { tabId: await ourTabId("/slow.html") });
+  const shown = await A.call("browser_perf_trace", {
+    action: "start",
+    reload: true,
+    autoStop: true,
+  });
+  const shownText = text(shown);
+  assert(
+    "F9 after switch_tab the same trace reports an LCP",
+    !isErr(shown) && /LCP[^\n]*?\d+\s*ms/i.test(shownText),
+    shownText.slice(0, 600),
+  );
+  await win.detach();
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 async function main() {
   requireFreshBuilds();
@@ -603,6 +709,8 @@ async function main() {
   await a6(base);
   await a7(base);
   await a8(base, secureBase);
+  await f8(base);
+  await f9(base);
 }
 
 async function teardown() {

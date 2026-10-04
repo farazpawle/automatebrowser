@@ -78,11 +78,14 @@ const signAuthChallenge = (challenge) => ({
 });
 
 // ── one MCP controller process (dist/index.js) speaking JSON-RPC over stdio ──
+// AUTOMATE_BROWSER_STRUCTURED: several checks read `structuredContent`, which a
+// controller withholds by default (plan 14, F2). The ProfileProbe below turns it
+// off again to check that default.
 function makeController(env) {
   const child = spawn("node", ["dist/index.js"], {
     cwd: ROOT,
     stdio: ["pipe", "pipe", "pipe"],
-    env,
+    env: { AUTOMATE_BROWSER_STRUCTURED: "1", ...env },
   });
   let outBuf = "";
   let stderr = "";
@@ -745,9 +748,8 @@ async function runTabLifecycle() {
   await a.rpc("tools/call", { name: "browser_select_client", arguments: { browser: "chrome" } });
   await a.rpc("tools/call", { name: "browser_new_tab", arguments: {} });
   // Every tab this browser handed out is one the agent opened, so every one is
-  // owed a close. The count is deliberately not pinned: the diagnostic footer on
-  // a claiming call provisions one too, and that is incidental to what is being
-  // tested here.
+  // owed a close. The count is deliberately not pinned: how many tabs the calls
+  // provision is incidental to what is being tested here.
   const owed = owner.provisioned.slice();
   assert("b01: the owning browser opened tab(s) for the agent", owed.length >= 1);
 
@@ -1547,6 +1549,7 @@ async function runProfiles() {
     AUTOMATE_BROWSER_RELAY_IDLE_MS: "3000",
     AUTOMATE_BROWSER_TOOLS: "core",
     AUTOMATE_BROWSER_CLIENT_NAME: "ProfileProbe",
+    AUTOMATE_BROWSER_STRUCTURED: "0",
   });
   await initController(c);
   const listed = await c.rpc("tools/list", {});
@@ -1554,6 +1557,12 @@ async function runProfiles() {
   assert(
     "profiles: tools/list serves exactly what the profile resolves (no drift)",
     !!core && served.join(",") === core.join(","),
+  );
+  // Plan 14, F2: Claude Code shows `structuredContent` INSTEAD of the text, so by
+  // default no tool declares an output schema and no result carries the copy.
+  assert(
+    "wire: by default tools/list declares no outputSchema",
+    served.length > 0 && listed.result.tools.every((t) => !("outputSchema" in t)),
   );
 
   // browser_status reports which profile is served, and it reaches the registry
@@ -1563,6 +1572,10 @@ async function runProfiles() {
   // regression in that import resolves to a missing line, not to an error.
   const st = await c.rpc("tools/call", { name: "browser_status", arguments: {} });
   const stText = ((st && st.result && st.result.content) || []).map((p) => p.text || "").join("\n");
+  assert(
+    "wire: by default a result carries the written reply and no structuredContent",
+    ok(st) && stText.length > 0 && !("structuredContent" in st.result),
+  );
   assert(
     "profiles: browser_status names the served profile and the env var that changes it",
     ok(st) &&
@@ -4085,7 +4098,14 @@ let A, B;
   assert("B sees the SAME roster (chrome + edge)", /chrome/.test(tB) && /edge/.test(tB));
 
   // ── A selects edge; routes to edge only ──
+  // Selecting claims nothing, so it sends nothing: its console-delta footer used
+  // to probe, and that probe opened a blank tab (plan 14, Task 15).
+  edge.received.length = 0;
   await A.rpc("tools/call", { name: "browser_select_client", arguments: { browser: "edge" } });
+  assert(
+    "selecting a browser sends it nothing (no tab, no probe)",
+    edge.received.length === 0 && edge.provisioned.length === 0,
+  );
   chrome.received.length = 0;
   edge.received.length = 0;
   const navA = await A.rpc("tools/call", navArgs("https://example.com"));

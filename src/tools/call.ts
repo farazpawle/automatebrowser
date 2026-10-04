@@ -53,6 +53,13 @@ function askedFor(args?: Record<string, unknown>): Set<string> {
 const ORIGIN_PROBE_MS = 2_000;
 
 /**
+ * F4's after-timeout question is a read of the worker's own buffer — a few ms on
+ * a live link. Kept short because it is added to a call that already failed, and
+ * a caller who asked for `timeout: 500` must not wait seconds more for it.
+ */
+const LOAD_PROBE_MS = 500;
+
+/**
  * Categories exempt from the B9 gates. These tools pick WHICH browser and WHICH
  * tab; they never act on a page. Gating them would strand an agent exactly the
  * way `ALWAYS_ON` in the registry exists to prevent — with a policy set it could
@@ -312,6 +319,27 @@ async function assertPolicyAllows(
 }
 
 /**
+ * F4 — the URL of a top-level load this tab began at or after `since`, read from
+ * the extension's request log; `undefined` when there was none or the log could
+ * not be read. Asked only after a page-acting call has timed out, so a call that
+ * succeeds pays nothing. The log is the worker's own buffer — no injection — so
+ * it answers even while a dialog has the page frozen.
+ */
+async function loadStartedSince(context: Context, since: number): Promise<string | undefined> {
+  try {
+    const log = (await context.sendSocketMessage(
+      "browser_network_requests",
+      { resourceTypes: ["main_frame"], limit: 1 },
+      { timeoutMs: LOAD_PROBE_MS },
+    )) as { requests?: Array<{ url?: string; start?: number }> } | undefined;
+    const last = log?.requests?.at(-1);
+    return last?.url && Number(last.start) >= since ? last.url : undefined;
+  } catch {
+    return undefined; // No answer is no evidence: the dialog hint stands.
+  }
+}
+
+/**
  * The single choke point through which a tool is invoked. Both entry points go
  * through it — the MCP `tools/call` handler and the `automate-browser` CLI — so
  * the path sandbox and the console-delta footer cannot apply to one and silently
@@ -430,6 +458,7 @@ async function runTool(
 
   let result: ToolResult;
   let retried = false;
+  const dispatchedAt = Date.now();
   for (let attempt = 0; ; attempt++) {
     try {
       result = await tool.handle(context, args);
@@ -484,6 +513,18 @@ async function runTool(
       // and nothing injected into it can run or reply. Naming it turns a dead end
       // into a next step. Only the message is enriched — the failure still fails.
       if (tool.blockedByDialog && /timeout/i.test(String((e as Error)?.message))) {
+        // F4: unless the page moved on during the call. A dialog freezes the page
+        // before any navigation request is made, so a load seen here rules it out.
+        const loaded = await loadStartedSince(context, dispatchedAt);
+        if (loaded) {
+          state.outcome = "unknown";
+          throw new Error(
+            `${(e as Error).message}. The tab started loading ${loaded} during this call, so ` +
+              `the action most likely landed and the page moved on — not a dialog. Take a ` +
+              `browser_snapshot to see where it is before repeating anything.`,
+            { cause: e },
+          );
+        }
         throw new Error(
           `${(e as Error).message}. If the page has an open alert/confirm/prompt or a ` +
             `"Leave site?" dialog, it is paused and cannot run this action. Clear it with ` +

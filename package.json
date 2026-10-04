@@ -35,6 +35,7 @@
     "smoke": "node scripts/connection-smoke.cjs",
     "tokens": "node scripts/count-tokens.mjs",
     "verify:release": "node scripts/verify-release.mjs",
+    "release:pack": "node scripts/pack-release.mjs",
     "docs:generate": "node scripts/generate-docs.mjs",
     "contracts:generate": "node scripts/generate-browser-contract.mjs",
     "contracts:check": "node scripts/generate-browser-contract.mjs --check",

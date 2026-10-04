@@ -27,6 +27,9 @@ export const ERROR_CODES = [
   "NOT_ACTIONABLE",
   // Caller error — the arguments could not be understood at all, so nothing ran
   "BAD_ARGS",
+  // The page did not load: Chrome committed its own error page instead (F1).
+  // Not retryable — a host that refused once refuses again until a person acts.
+  "NAVIGATION_FAILED",
   // Capability
   "RESTRICTED_PAGE",
   "ADVANCED_MODE_REQUIRED",
@@ -34,6 +37,10 @@ export const ERROR_CODES = [
   // one. Only a PERSON can change that, which is why it carries no recovery tool.
   "INCOGNITO_BLOCKED",
   "CAPTURE_STALLED",
+  // Chrome is not drawing the tab (minimised window, background tab), so real
+  // input is discarded and a page load reports no LCP (F9). Not retryable: it
+  // stays hidden until something brings it forward.
+  "TAB_HIDDEN",
   // Safety policy (B9) — refusals the OPERATOR configured, not browser failures
   "ORIGIN_BLOCKED",
   "READ_ONLY",
@@ -171,6 +178,7 @@ const RECOVER: Partial<Record<ErrorCode, string>> = {
   TAB_GONE: "browser_list_tabs",
   ADVANCED_MODE_REQUIRED: "browser_advanced_mode",
   LEASE_LOST: "browser_select_tab",
+  TAB_HIDDEN: "browser_switch_tab",
   // An origin refusal is not recoverable in place — but browser_status prints
   // the policy that refused it, which is the only useful next move.
   ORIGIN_BLOCKED: "browser_status",

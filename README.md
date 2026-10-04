@@ -58,6 +58,8 @@ under [Tools](#tools).
 - A navigation that **did not happen says so**, in the snapshot reply too, instead of handing you the
   previous page under a success message.
   → [A navigation that did not happen says so](#a-navigation-that-did-not-happen-says-so)
+- A page that **failed to load** fails the call with Chrome's own error, instead of an "ok" on Chrome's
+  error page. → [A page that failed to load says so](#a-page-that-failed-to-load-says-so)
 - Click, type, hover, drag, press keys, select options, scroll, and **fill a whole form in one call**.
   Checkboxes and radios take a **boolean and nothing else** — a value that is neither is refused rather
   than guessed at. → [Checkboxes and radios take a boolean](#checkboxes-and-radios-take-a-boolean-and-nothing-else)
@@ -65,22 +67,38 @@ under [Tools](#tools).
   wrote it. → [Filling a form that spans frames](#filling-a-form-that-spans-frames)
 - Click by **element** or by **coordinate**, for canvases, maps and PDF viewers that a snapshot cannot
   name. → [Clicking something a snapshot cannot name](#clicking-something-a-snapshot-cannot-name)
+- A click **the page ignored says so** — "Clicked" alone used to be all you got from a page that acts
+  only on a real click. → [A click the page ignored is reported](#a-click-the-page-ignored-is-reported)
+- A hover **says what it did**: by default page scripts see the mouse but CSS `:hover` styles do not
+  apply; with advanced mode on it is a real mouse move and they do.
+  → [Hover: what the page sees, and what CSS sees](#hover-what-the-page-sees-and-what-css-sees)
 - Interactions report the same result **whether or not the debugger is attached** — same fields, same
-  waiting. → [Advanced mode does not change what interactions return](#advanced-mode-does-not-change-what-interactions-return)
+  waiting — and only advanced mode itself makes them real input; reading a response body does not.
+  → [Advanced mode does not change what interactions return](#advanced-mode-does-not-change-what-interactions-return)
 - Upload files, and answer `alert`/`confirm`/`prompt` dialogs — including the native "Leave site?"
   prompt that page JavaScript cannot even see.
 - Every interaction **waits for the element to be genuinely ready** — visible, enabled, still, and not
   covered by an overlay — then waits for the page to settle before returning.
   → [Actionability](#actionability-interactions-wait-for-the-element-to-be-ready)
 - Choose per call what **"finished" means** — return at once, wait for load, or wait for the network
-  to go quiet — and cap how long that wait may take.
+  to go quiet — and cap how long that wait may take. By default a navigation also waits for the page
+  to **finish drawing**, so a script-built page like YouTube is not read as an empty shell.
   → [Deciding when an action is finished](#deciding-when-an-action-is-finished)
+- **Wait for a condition, not a duration** — an element, the URL, or text, where text can be a
+  pattern (`/Result: \d+/` skips the "Result: n/a" placeholder) or something to wait to **disappear**.
+  → [Waiting for a condition, not a duration](#waiting-for-a-condition-not-a-duration)
+- Run your own JavaScript against elements you already found, with a **time limit you choose** for
+  slow page work. → [Running your own JavaScript](#running-your-own-javascript-against-elements-you-already-found)
 
 **Read the page**
 - Accessibility snapshots that stay **lean by default**, with a full mode and a write-to-file mode for
-  pages that would otherwise fill the context window. → [Snapshots](#snapshots-lean-full-or-to-a-file)
+  pages that would otherwise fill the context window. An icon-only button still gets a name — its
+  tooltip, its image's alt text or its `#id` — so two of them can be told apart.
+  → [Snapshots](#snapshots-lean-full-or-to-a-file)
 - Clean text or Markdown extraction, raw HTML, and a `find` that returns just the elements you asked
-  for instead of a whole tree.
+  for instead of a whole tree — the link that says "Sign in", not the page wrapped around it, with
+  the link's address, a date's `datetime` or a `<meta>` tag's value on the same line.
+  → [Reading a page without a snapshot](#reading-a-page-without-a-snapshot)
 - **Element refs survive a re-render**, and recover themselves once if the page swapped the element
   out underneath you. → [Element refs survive a re-render](#element-refs-survive-a-re-render)
 - Reads reach **inside iframes, including cross-origin ones**, with empty frames dropped and a cap so
@@ -120,6 +138,8 @@ under [Tools](#tools).
 **Measure speed**
 - Record a performance trace and get **Core Web Vitals** — LCP, FCP, CLS, INP — rated against Google's
   thresholds, plus the long tasks that blocked the main thread. One call profiles a whole page load.
+  A page Chrome is not drawing is refused at once rather than recorded for nothing.
+  → [A hidden page is refused, not measured](#a-hidden-page-is-refused-not-measured)
 - **Find out where the LCP time went**, not just how long it was: the server, discovering the image,
   downloading it, or painting it — with the cause and the fix named in a line each, and the
   render-blocking resources listed. → [Where the LCP time actually went](#where-the-lcp-time-actually-went)
@@ -163,6 +183,8 @@ under [Tools](#tools).
   → [The link to the relay repairs itself](#the-link-to-the-relay-repairs-itself)
 - **Nothing steals your focus** except the one tool whose job is to show you something.
   → [What can take your focus](#what-can-take-your-focus)
+- **"Show me" works on a minimised browser.** Switching to a tab brings the window back and says
+  whether the page is really on screen. → [Switching restores a minimised window](#switching-restores-a-minimised-window)
 - **A clean, logged-out session on demand**, in a private window, for checking what a first-time
   visitor sees without logging out of anything.
   → [A clean, logged-out session on demand](#a-clean-logged-out-session-on-demand)
@@ -181,8 +203,8 @@ under [Tools](#tools).
 - **Certificate checking is never switched off.** The one switch that claimed to do it never worked
   on any build and was removed; the section names the two routes that do.
   → [Loading a site with a bad certificate](#loading-a-site-with-a-bad-certificate)
-- Only **http(s) pages** can be navigated to — a `javascript:`, `file:` or `chrome://` URL is refused
-  by name. → [Where a navigation may go](#where-a-navigation-may-go)
+- Only **http(s) pages** can be navigated to or opened in a new tab — a `javascript:`, `file:` or
+  `chrome://` URL is refused by name. → [Where a navigation may go](#where-a-navigation-may-go)
 - The local socket **only accepts the extension**, and hangs up on a peer that floods it or sends
   nonsense. → [What can reach the local socket](#what-can-reach-the-local-socket)
 - The optional shared secret is **never sent over the socket**; both ends sign a challenge with it
@@ -291,6 +313,12 @@ yet — that is the honest state of it, not a step you can skip.
 > Already have a hand-written `automatebrowser` entry? **Remove it first** — the plugin registers
 > the server itself, and two entries in one client means two controllers and duplicate tools.
 
+**Claude Desktop** — download `automatebrowser-<version>.mcpb` from the
+[latest release](https://github.com/farazpawle/automatebrowser/releases/latest) and open it, or drag it
+onto **Settings → Extensions**. The bundle carries its own dependencies, so nothing else installs
+first. It is the server only: the skill is the separate `automate-browser-skill-<version>.zip` on the
+same release (see [Skills that ship with it](#skills-that-ship-with-it)).
+
 **Any other editor** — register the published package as a stdio server. The command it runs is:
 
 ```bash
@@ -384,7 +412,7 @@ auto-discover the relay.
 
 #### Installing it from a manifest instead
 
-Four manifests in this repository describe the same server to four listing formats, so a client that
+Five manifests in this repository describe the same server to five listing formats, so a client that
 speaks one of them can install it without you writing any JSON:
 
 | Manifest | Platform | How it is installed |
@@ -393,8 +421,9 @@ speaks one of them can install it without you writing any JSON:
 | `gemini-extension.json` | Gemini CLI | `gemini extensions install https://github.com/farazpawle/automatebrowser` |
 | `plugin.json` + `mcp.json` | Any client implementing [Agent Plugins 1.0.0](https://agent-plugins.org/) | Point the client at this repository; it reads both files plus `skills/` from the root |
 | `.claude-plugin/plugin.json` + `marketplace.json` | Claude Code | `/plugin marketplace add` — see [Skills that ship with it](#skills-that-ship-with-it) |
+| `mcpb/manifest.json` | Claude Desktop | Not installed from the repository: it is packed with `dist/` and production `node_modules` into the `.mcpb` attached to each [release](https://github.com/farazpawle/automatebrowser/releases) |
 
-**All four work as of `1.0.0`** (published 2026-09-19). Three of them launch
+**The first four work as of `1.0.0`** (published 2026-09-19). Three of them launch
 `npx @automatebrowser/mcp@<version>`, which resolved to nothing until that day and now resolves to this
 build — a **controller** that joins the relay exactly like a local `node dist/index.js` entry. The old
 warning that npx would partition the relay described a self-hosting build that this package has never
@@ -406,7 +435,7 @@ skills out of a dependency; only an installed **plugin** is searched. The Claude
 Agent Plugins 1.0.0 client are the exception: each registers the server *and* carries the skill, so one
 install is the whole thing. See [Skills that ship with it](#skills-that-ship-with-it).
 
-All five version claims across those files are gated: `npm run verify:release` and `npm test` both fail
+All six version claims across those files are gated: `npm run verify:release` and `npm test` both fail
 if any one of them disagrees with `package.json`, so a listing cannot quietly advertise a version that
 was never released.
 
@@ -455,7 +484,7 @@ is what the per-tab claim is for.
 |------|-------------|
 | `browser_read_page` | Read the page's main content as clean text or Markdown (strips nav/scripts/styles) |
 | `browser_get_html` | Get the raw outerHTML of the page (or of a specific element by `ref`) |
-| `browser_find` | Find elements by text, role, and/or CSS selector and return fresh refs WITHOUT a full snapshot |
+| `browser_find` | Find elements by text, role, and/or CSS selector and return refs WITHOUT a full snapshot |
 
 ### Page-declared tools
 Actions the PAGE publishes about itself, which an agent can call directly instead of finding and clicking controls for. Forward-looking: the standard is a draft and almost no live site declares anything yet, so `list` normally comes back empty with the reason.
@@ -483,7 +512,7 @@ Actions the PAGE publishes about itself, which an agent can call directly instea
 | `browser_proxy` | Route the browser through a proxy |
 
 ### Performance
-`browser_perf_trace` measures THIS machine on THIS run and needs `browser_advanced_mode` — except `action: "memory"`, which samples the JS heap with no debugger and no banner. `browser_perf_field_data` needs no browser at all - it reads Google's Chrome UX Report for what real visitors experienced, and sends the URL you ask about to that public API.
+`browser_perf_trace` measures THIS machine on THIS run. Recording attaches the debugger itself (banner) and detaches it on stop unless advanced mode was already on; `action: "memory"` samples the JS heap with no debugger and no banner. `browser_perf_field_data` needs no browser at all - it reads Google's Chrome UX Report for what real visitors experienced, and sends the URL you ask about to that public API.
 
 | Tool | Description |
 |------|-------------|
@@ -517,14 +546,15 @@ Actions the PAGE publishes about itself, which an agent can call directly instea
 
 ### Advanced (opt-in CDP)
 Attach the Chrome debugger only when you need full-fidelity input or network bodies. Enable with
-`browser_advanced_mode` first; a debugging banner shows only while it's attached.
+`browser_advanced_mode` first (a perf trace attaches by itself); a debugging banner shows only
+while it's attached.
 
 | Tool | Description |
 |------|-------------|
 | `browser_advanced_mode` | Enable/disable opt-in debugger (CDP) mode for the tab you are driving |
 | `browser_upload_file` | Set files on a file input (real upload) |
 | `browser_get_network_request` | Get a network request's response BODY, status and headers by URL substring |
-| `browser_perf_trace` | Record a performance trace (requires advanced/debugger mode) |
+| `browser_perf_trace` | Record a performance trace (attaches the debugger while recording) |
 | `browser_emulate` | Emulate location, headers, colour scheme, viewport, user agent, network or CPU |
 
 <!-- AUTO-GENERATED:tools END -->
@@ -583,6 +613,7 @@ All settings are environment variables on the **server** side (set them in the M
 | `AUTOMATE_BROWSER_RELAY_HOST` | Bind the relay past loopback so a browser on **another machine** can connect. Refuses to start without `AUTOMATE_BROWSER_TOKEN` | `127.0.0.1` |
 | `AUTOMATE_BROWSER_RELAY_FOREGROUND` | `1` also tees the relay's log to stderr instead of the file only | unset |
 | `AUTOMATE_BROWSER_SNAPSHOT_EACH_ACTION` | Bundle a snapshot after every interaction | unset |
+| `AUTOMATE_BROWSER_STRUCTURED` | `1` also sends each result's `structuredContent` and lists output schemas, for scripts. Leave off for agents: Claude Code then shows only that data and hides the written reply | unset (written reply only) |
 | `AUTOMATE_BROWSER_DELTA_FOOTER` | `off` disables the console-error footer below | on |
 | `AUTOMATE_BROWSER_DELTA_FOOTER_MS` | Hard ceiling on the footer's console probe | `2000` |
 | `AUTOMATE_BROWSER_NAV_CONFIRM_MS` | How long a navigation that reported no movement is re-checked before it is called a failure | `2000` |
@@ -712,6 +743,16 @@ and structure, not just interactive elements — or `filePath` to write it out a
 for pages whose snapshot would otherwise fill the context window. **Element refs are identical in
 both modes**, so you can switch mid-task and keep using refs you already hold. `filePath` goes through
 the same sandbox as every other write path.
+
+**A control with no text still gets a name.** `<button id="buttonGenerate"><i class="fa fa-cog"></i>
+</button>` used to print as a bare `- button [ref=…]`, indistinguishable from the icon button beside
+it. A control with no name of its own now falls back to its `title`, then the `alt` of an image inside
+it, then its `#id`: `- button "#buttonGenerate" [ref=…]`. Refs do not change — they never read the
+name. `browser_find` names such a control from its image's `alt` too, so `{ text: "Settings" }`
+reaches a cog button whose image says "Settings"; its `id` and `title` already print as attributes.
+The limits: an `#id` names the element, not what it does — `#btn-3` tells you nothing, so look before
+you click; a control with no title, image alt or id still prints unnamed; and an icon drawn by CSS
+alone (a font glyph or background image) carries no text anywhere to borrow.
 
 ### Frames, including cross-origin ones
 
@@ -850,6 +891,11 @@ on it.
 
 An `await`ed result is resolved before it is returned — a promise used to come back as an empty
 object, which looked like a successful call that produced nothing.
+
+It gives up after **8 seconds** by default. Pass `timeout` (in milliseconds, up to 120000) for slower
+work: a page computation that takes 9 seconds fails without it and returns with `timeout: 15000`. The
+limit: when the time runs out the reply stops waiting, but the code keeps running in the page — there
+is no way to cancel a script already started there.
 
 ### What this server costs your context, measured
 
@@ -1068,15 +1114,30 @@ which says what "finished" means for that one call:
 | `waitUntil` | Returns when |
 |---|---|
 | `none` | immediately, without waiting for anything |
-| `auto` | the DOM stops changing — the default for a click, a keystroke or typing |
-| `load` | the page's load event has fired — the default for a navigation |
-| `networkidle` | the page has also stopped making requests |
+| `auto` | the DOM stops changing — the default for everything: a click, a keystroke, typing, and a navigation (after its load event) |
+| `load` | the page's load event has fired, and nothing more — the fastest reply from a navigation |
+| `networkidle` | after the load, the tab has had no request open for 0.5 s (gives up waiting after 5 s) |
 
 **`settleMs`** caps that wait in milliseconds (up to 15000), and the separate **`timeout`** gives up
 on the whole call. They answer different questions: `settleMs` is how long to wait for the page to go
 quiet after the action worked, `timeout` is how long to wait for the action at all. Use `none` on a
 click whose result you are about to poll for anyway, and `networkidle` on the one that kicks off the
 fetch you actually care about.
+
+**A navigation waits for the page to finish drawing, not just for its load event.** The load event
+fires before a page that builds itself with script — YouTube, most web apps — has drawn anything, so
+the snapshot a navigation returns used to show an empty shell. Now, after the load, it waits until the
+page has gone **0.3 s without a change**, for at most **1.5 s**. Measured on six local test pages, a
+typical navigation went from about **0.02 s to 0.34 s** — a median cost of **0.31–0.32 s** across two
+runs. That 0.3 s is paid even by a page that was already still, since only a quiet spell can prove it
+is. The limits: a page that never stops changing (a ticker, an animation that touches the DOM) is read
+at the 1.5 s cap, mid-change; content that arrives later than that is still missed — wait for it with
+`browser_wait_for`; and `settleMs` caps this wait like any other. Pass `waitUntil: "load"` for the old,
+faster behaviour when you will wait for something specific yourself.
+
+`networkidle` used to be a fixed 0.5 s after the load. It now watches the tab's requests and waits for
+0.5 s with none open. A page that holds a connection open for good — a chat socket, a long-poll —
+never goes idle, so there it always costs the full 5 s cap.
 
 ### What `settled` means on a navigation
 
@@ -1133,6 +1194,25 @@ window. Both disagreements are at that boundary. It is silent by design where an
 correct anyway — a reload, `waitUntil: "none"` (which asked not to wait, and so cannot know), a
 navigation to the page already open, and a redirect that lands somewhere other than the url you typed.
 
+### A page that failed to load says so
+
+A navigation to a host that refuses the connection, does not resolve or has a bad certificate used to
+answer `ok` — the tab *had* moved, onto Chrome's own error page — and the next tool then failed with
+`RESTRICTED_PAGE` and advice about `chrome://` pages. Now `browser_navigate` fails with
+`NAVIGATION_FAILED`, naming the url and Chrome's own error, and takes no snapshot of the error page:
+
+> `http://127.0.0.1:1/` did not load — Chrome showed its error page instead (net::ERR_CONNECTION_REFUSED).
+> Nothing on that page can be read or clicked.
+
+When you asked for `http://` and Chrome's "Always use secure connections" setting upgraded it to
+`https://`, which then failed, the message says that too — only a person can allow the http site. Any
+other tool run on an error page answers `NAVIGATION_FAILED` as well, instead of `RESTRICTED_PAGE`.
+
+**The honest limits.** A download is not a failure, although its request is aborted the same way: it
+is reported only when the load finished. `browser_go_back` and `browser_go_forward` do not throw on an
+error page; the next tool you run there does. A page that loads and then shows its *own* error (a 404
+page, a "something went wrong" screen) loaded fine as far as the browser is concerned — read it.
+
 ### Waiting for a condition, not a duration
 
 `browser_wait` sleeps for a fixed number of seconds and is almost always the wrong tool — it is too
@@ -1142,7 +1222,11 @@ you are waiting for is true, and gives up after 15 seconds unless you say otherw
 - **an element**, by CSS selector, in whichever state you mean — `visible` (the default), `hidden`,
   `attached` or `detached`. The last two are the ones that catch a spinner being removed rather than
   merely faded out.
-- **text**, as a case-sensitive substring anywhere in the page body.
+- **text**, as a case-sensitive substring anywhere in the page body or, wrapped in slashes, a regular
+  expression. A plain `"Result:"` matches a "Result: n/a" placeholder the moment you ask, which is how
+  a benchmark run read the old value; `"/Result: \d+/"` waits for the number. With `state: "hidden"`
+  or `"detached"` it waits for the text to **go** — a "Loading..." notice clearing, say. A pattern that
+  is not a valid regular expression is matched as plain text instead of failing.
 - **the URL**, as a substring or, wrapped in slashes, a regular expression — which is how you wait
   out a login redirect without guessing how long it takes.
 
@@ -1161,7 +1245,25 @@ flooding the reply:
   Sign in button" when you already know that is what you want.
 
 The two that truncate say `…(truncated)` when a cap bit, and `maxLength` moves it; `find` simply
-returns at most `max` matches. None of the three throws away the element references you are already
+returns at most `max` matches.
+
+A text search returns the **innermost** element that holds the text. The text of a link is also the
+text of the paragraph, the `<body>` and the `<html>` around it, so all of those used to match, came
+first in page order and could fill `max` before the link was reached — `find "Sign in"` answered
+`html`, `body`, `div`. Now an element that contains another match is dropped, and a control keeps the
+label inside it: `<button><span>Sign in</span></button>` comes back as the button. The limits: a
+text search now reads the whole page before cutting to `max` (it used to stop early); and with only
+a `role` or `selector`, nested matches are all returned, because there you asked for exactly those.
+
+Each match also prints the attributes that carry data rather than text — `id`, `href`, `title`,
+`datetime` and `content`, when present — as `- link "Sign in" [ref=e3] <a href="/login" id="go">`.
+That is what makes a `<relative-time>`'s real date or a link's target readable without
+`browser_get_html`. And a `selector` now reaches elements that are never drawn: everything in
+`<head>` has no box on screen, so `{ selector: "meta[name=user-login]" }` used to answer "no matching
+elements" on a page that plainly had one. Such matches are marked `(hidden)` — read them, do not click
+them. The limits: a text or role search still sees only what is drawn; each attribute value is cut to
+120 characters, so a very long `href` ends in `…` (use `browser_get_html` for the whole thing); and
+other attributes (`data-*`, `aria-*`, `value`) are not shown. None of the three throws away the element references you are already
 holding. → [Element refs survive a re-render](#element-refs-survive-a-re-render)
 
 ### Tools the page declares about itself
@@ -1287,18 +1389,21 @@ raised error name the same problem the same way.
 | `TAB_GONE` | the tab was closed underneath you, or could not be recovered after the browser reconnected | `browser_list_tabs` |
 | `LEASE_LOST` | your claim expired or was taken — usually arrives as a notice on your next successful call, not as a failure | `browser_select_tab` |
 | `NO_BROWSER` | nothing is connected, the link dropped mid-call, or the browser the call was aimed at did not come back | retried once automatically when the action demonstrably never happened, and only against that same browser. When the link dropped *after* the request went out and the tool is one that cannot be repeated safely, it is **not** flagged retryable and the message says the action may already have landed |
+| `NAVIGATION_FAILED` | the page did not load — the tab shows Chrome's error page (refused, unresolved, bad certificate) | check the url; an http site Chrome upgraded to https needs a person |
 | `RESTRICTED_PAGE` | a `chrome://` page, the store, or the PDF viewer | drive an ordinary http(s) page |
 | `ADVANCED_MODE_REQUIRED` | the option needs the debugger | `browser_advanced_mode` |
 | `CAPTURE_STALLED` | Chrome stopped drawing the tab, twice | flagged retryable — a screenshot has no side effect |
+| `TAB_HIDDEN` | Chrome is not drawing the tab (minimised window or background tab), so a real click / key / hover or a page-load trace cannot work | `browser_switch_tab` — it restores the window; it takes the user's screen, so ask |
 | `ORIGIN_BLOCKED` | your own allow / deny / sensitive list refused it, or the tab moved between the check and the action | `browser_status` prints the policy |
 | `READ_ONLY` | read-only mode is on and this tool changes the page | `browser_status` |
 | `EVAL_BLOCKED` | running JavaScript you wrote is switched off — even to read | `browser_status`; use a snapshot or `browser_find` instead |
 | `CSP_BLOCKED` `MIXED_CONTENT` `CORS_BLOCKED` `DEPRECATED_API` `THIRD_PARTY_COOKIE_BLOCKED` | why something on the page silently did nothing | `browser_issues` |
 
-Each also arrives as `structuredContent` — the code, the message, whether it is retryable, and the
-tool to call next — so a client can branch on it without reading the prose at all.
+With `AUTOMATE_BROWSER_STRUCTURED=1` each also arrives as `structuredContent` — the code, the message,
+whether it is retryable, and the tool to call next — so a script can branch on it without reading the
+prose ([why that is off by default](#machine-readable-results)).
 
-**The honest limit:** the nine tools that declare an output schema (`browser_get_cookies`,
+**The honest limit:** under that switch, the nine tools that declare an output schema (`browser_get_cookies`,
 `browser_storage`, `browser_downloads`, `browser_network_requests`, `browser_status`,
 `browser_list_clients`, `browser_list_tabs`, `browser_new_tab`, `browser_select_tab`) get the code in
 the **text only**. A client validates any `structuredContent` against the declared schema — failures
@@ -1324,7 +1429,7 @@ out wrong, and every one of them was wrong in the direction that costs you somet
 |---|---|
 | **Refused** — a safety policy, a bad argument, a section name that does not exist | the failure, with its code. Nothing was sent, so nothing can have happened |
 | **Done** | the result. Optional extras that failed on the way out are footnotes, never a demotion |
-| **Partly done** | `outcome: "partial"`, plus the per-field verdicts. `browser_fill_form` also returns `{ filled, total, errors }` as `structuredContent` |
+| **Partly done** | `outcome: "partial"`, plus the per-field verdicts. `browser_fill_form` also returns `{ filled, total, errors }` as `structuredContent` when `AUTOMATE_BROWSER_STRUCTURED=1` |
 | **Failed** | `isError: true`. A tool that *returns* a failure is now recorded as one in the audit trail too — it used to be logged `ok` |
 | **Nobody knows** | the link dropped **after** the request went out. The message says the action **may have taken effect**, points you at `browser_snapshot`, and is **not** flagged retryable |
 
@@ -1437,6 +1542,22 @@ Separately, and with no debugger involved: when an open `alert`/`confirm`/`promp
 a page-acting tool used to time out with an unexplained "Socket message timeout". It now names the
 dialog as the likely cause and points at `browser_handle_dialog`.
 
+A click that **leaves the page** used to fall into the same trap without any dialog: Chrome never
+answers an in-page step whose document unloads, so following a link (or a `browser_type` with
+`submit: true` that sends a form) hung for the full 8 seconds and was then blamed on a dialog. It now
+returns as soon as the tab starts loading the new page — measured **0.4 s instead of an 8 s error** —
+with `navigated: true` and the new `urlAfter`. **Honest limits:** the "did the page settle" check
+inside the old page is skipped in that case, so the result carries no `domSettled`; and a page that
+starts navigating on its own at that very moment cannot be told apart from one the click sent away.
+
+And when a page-acting call **does** run out of time while its tab is loading a new page — a short
+`timeout` against a slow page, or a load Chrome never reports — the error no longer blames a dialog.
+It names the page that started loading and says the action most likely landed, so the next step is a
+snapshot, not a blind repeat. The question behind it ("did a top-level load begin during this call?")
+is put to the browser's request log **only after a timeout**, so a call that succeeds pays nothing;
+measured, it added about **8 ms** to the failed call. Without the request log (an extension too old to
+keep one), the dialog hint is given as before.
+
 ### Loading a site with a bad certificate
 
 Internal staging environments routinely serve a certificate the browser refuses — self-signed, expired,
@@ -1472,12 +1593,74 @@ present in Chromium's own source, which is true and was the wrong thing to check
 covered it against a fake browser and all ten passed, because they assert the flag *leaves the server*
 correctly — which it did. Nothing exercised a real browser until `npm run test:live` was written.
 
+### A click the page ignored is reported
+
+The default click is synthetic, and some pages act only on a real (trusted) one. Those pages used to
+answer "Clicked" and nothing more, so the agent carried on as if the click had worked. Now, when a
+click by ref shows no reaction at all and did not navigate, the reply adds one line:
+
+```
+Clicked "Generate"
+No change seen on the page. If the click should have done something, it may need a real click: browser_advanced_mode, with the tab visible.
+```
+
+"A reaction" is any of: the page's content changed (watched from **before** the click is dispatched,
+so a handler that changes the page synchronously counts), a checkbox flipped, focus moved into a field
+or somewhere else, or the tab sent a request — or any tab began a new page load, which covers a link
+that opens a new tab. It costs no extra time: the watch runs during the settle the click already waits
+for, and the request check is an in-memory lookup made only when nothing else changed. Measured on the
+integration pages (2026-10-02): **0 notes on 13 clicks that really worked**, and the note on a button
+that acts only on `isTrusted` clicks.
+
+It is a note, not an error, and nothing is retried for you. The honest limits:
+
+- **A click can work and change nothing visible** — then the note is a false alarm. Read it as "check",
+  not "failed".
+- **Changes inside a shadow tree other than the clicked element's own are not seen**, so a web
+  component that re-renders a sibling's shadow tree can draw a false note.
+- **A late reaction is missed.** The watch ends when the click's settle does — usually a few hundred
+  milliseconds; a handler that waits longer before touching the page, without sending a request, draws
+  the note.
+- **Another tab starting a page load at the same moment hides the note** (it errs towards silence).
+- **Only a click by ref is measured.** A coordinate click, a click in advanced mode, and a call run with
+  `AUTOMATE_BROWSER_ACTIONABILITY=off` never carry the note.
+
+### Hover: what the page sees, and what CSS sees
+
+The default `browser_hover` fires synthetic mouse events. The page's own scripts see them, so a menu
+opened by a `mouseover` or `mouseenter` handler opens. But the browser's real pointer never moves, so
+**CSS `:hover` rules do not apply** — a menu, tooltip or style that exists only in CSS stays hidden.
+The reply used to say "Hovered over" either way; it now says which kind it was:
+
+```
+Hovered over "Products" (synthetic: page scripts saw the mouse; CSS :hover styles do not apply. For the hover look, use browser_advanced_mode with the tab visible.)
+```
+
+With `browser_advanced_mode` on, hover is a **real mouse move** to the element's centre and replies
+`(real mouse)`; the element then matches `:hover`, checked in a real Chrome by the integration suite.
+The limits are the trusted click's: it is **refused on a tab Chrome is not drawing** (a minimised
+window or a background tab — Chrome would discard the move and report success), and it cannot reach an
+element inside a cross-origin frame. The real pointer stays where it was left until something else
+moves it.
+
 ### Advanced mode does not change what interactions return
 
-With `browser_advanced_mode` on, `browser_click` and `browser_press_key` are dispatched as real
-OS-level input rather than synthetic events. That is the only difference an agent sees. **Both still
-wait for the page to settle and still return the same fields** — `navigated`, `urlBefore`, `urlAfter`,
-`settled`, `elapsedMs`, plus the `hit` naming what was actually under a coordinate click.
+With `browser_advanced_mode` on, `browser_click`, `browser_hover` and `browser_press_key` are
+dispatched as real OS-level input rather than synthetic events. That is the only difference an agent
+sees. **Click and key press still wait for the page to settle and still return the same fields** —
+`navigated`, `urlBefore`, `urlAfter`, `settled`, `elapsedMs`, plus the `hit` naming what was actually
+under a coordinate click. Hover never settled on either path; its reply only changes from
+`(synthetic: …)` to `(real mouse)`.
+
+**Only `browser_advanced_mode` switches input to real.** Other calls attach the debugger for their own
+sake — `browser_get_network_request` or `browser_upload_file` with `keepEnabled: true`, a full-page
+screenshot with it, a `browser_perf_trace` recording. Until 2026-10-02 any leftover attach silently
+moved every later click, key and hover onto the real-input path, which a background tab then
+**refused** (a benchmark run read one response body and its next click failed). Input is now chosen
+on the mode alone, checked in a real Chrome by the integration suite. A trace that attached the
+debugger detaches it again on stop, and `browser_advanced_mode {}` answers **OFF** for a leftover
+attach while still listing the tab under "Attached tabs" — the banner is up, your input is unchanged.
+One limit: a `keepEnabled` capture made *while* a trace is recording is detached when that trace stops.
 
 Until 2026-09-01 they returned a bare `{ok: true}` instead. Enabling the debugger for something
 unrelated — reading one response body, recording one trace — therefore changed both the shape of every
@@ -1488,8 +1671,8 @@ announced this, and no error was ever raised.
 Two honest limits, and the first one matters more than the fix:
 
 - **Trusted input cannot reach a background tab at all.** Chrome discards real input aimed at a tab it
-  is not drawing. Since the agent works in a background tab by default, `browser_click` and
-  `browser_press_key` **refuse** while advanced mode is on, naming the reason and telling you to bring
+  is not drawing. Since the agent works in a background tab by default, `browser_click`,
+  `browser_hover` and `browser_press_key` **refuse** while advanced mode is on, naming the reason and telling you to bring
   the tab forward or turn the mode off. They never report a success that did not happen — but it does
   mean the practical pattern is: enable advanced mode for the thing that needs it, then turn it off
   before interacting. The debugger-free path works fine in a hidden tab.
@@ -1581,6 +1764,21 @@ for "show me what you did". Everything else works in the background:
 - `browser_select_tab` takes over a tab **without** activating it.
 - Navigation, clicks, typing, reads and snapshots all run on a background tab.
 
+#### Switching restores a minimised window
+
+Focusing a window does not un-minimise it in Chrome, so `browser_switch_tab` used to report success
+while the page stayed hidden. It now restores a minimised window first, then focuses it, and the reply
+says what the **page** reports: `— the page is visible`, or `— but the page is still hidden` with the
+likely reason. In a test Chrome the page went from `hidden` to `visible` within the call; with the old
+behaviour the window stayed minimised. Nothing else touches the window. Measured on a Windows 11
+desktop with another app (Excel) in front: the restored window became the front window about 45 ms
+after the call, and a window that was maximised came back maximised (normal came back normal).
+
+Limits: that was a test Chrome, not a long-running everyday one. Windows can still refuse to bring a
+window forward and only flash it in the taskbar, and a window covered by another one or on another
+virtual desktop can stay hidden — in each case the reply says hidden rather than claiming success. On a settings page, or with an older
+extension, the reply says nothing about visibility.
+
 Screenshots included: **`browser_screenshot` works on a background tab and does not bring it
 forward.** How it gets there is worth knowing, because it has a visible cost.
 
@@ -1592,11 +1790,12 @@ It renders the exact tab through the debugger instead, which needs nothing on sc
 
 - **The cost:** Chrome shows its "being debugged" banner for the duration. The debugger is detached
   again straight after, unless `keepEnabled: true`. This is the same mechanism `fullPage: true` has
-  always used.
+  always used. A debugger left attached this way does not switch your clicks to real input — only
+  `browser_advanced_mode` does.
 - **The result says so.** A capture taken this way comes back with a line naming the reason — the tab
   was not the foreground one, or its window was minimised, or not focused — so an agent can tell you
   why the banner appeared instead of leaving you to wonder. It rides alongside the image, and in
-  `structuredContent` for a client that prefers fields. A capture on the cheap path carries neither,
+  `structuredContent` with `AUTOMATE_BROWSER_STRUCTURED=1`. A capture on the cheap path carries neither,
   so nothing changed for the ordinary case. **Fixed 2026-09-04:** the extension had always reported
   both, and the server dropped them before the reply was assembled, which made this very line untrue
   in both this file and the shipped skill for as long as either has said it.
@@ -1655,9 +1854,20 @@ failing relay can never make the initial handshake fail.
 
 ### Machine-readable results
 
-Tools that return data — not just a confirmation — also return `structuredContent` alongside the human
-text, so a client can consume the fields directly instead of parsing prose. The terminal CLI exposes
-the same thing with `--json`, which is what makes it scriptable.
+An agent gets the written reply — the summary, the warnings, the "call this next" line. The
+machine-readable copy of each result (`structuredContent`) is **off by default** since 2026-10-02.
+
+The reason is one client's behaviour, measured rather than assumed: when a result carries both,
+**Claude Code shows the agent the structured copy instead of the text**. `browser_status` came back
+as bare JSON with its warnings gone, and in the plan 13 benchmark `browser_get_console_logs` showed
+`{"page":1,"totalPages":1,"total":1,"hasNext":false}` and none of the messages — three times. About
+25 replies across the server were hiding their text this way, the console-error footer included.
+
+- **Scripts that want the fields** set `AUTOMATE_BROWSER_STRUCTURED=1`. Results then carry
+  `structuredContent` again and the nine data tools list their output schemas.
+- **The terminal CLI is unchanged:** `--json` still prints the whole result, structured copy included.
+- **The honest limit:** with the switch on, an agent in Claude Code is back to reading the bare data.
+  Leave it off for any agent.
 
 ### Finding out your copy is out of date
 
@@ -1780,10 +1990,15 @@ pair costs **277 output tokens**, paid only when you call the tool — the schem
 
 ### Where a navigation may go
 
-`browser_navigate` accepts `http:`, `https:` and `about:` URLs, and refuses everything else by name.
-That rules out `javascript:` (which would execute in whatever page is open), `file:` (which would
-read the disk through the browser, around the file sandbox above), and the browser's own
-`chrome://` / `edge://` pages, which cannot be automated anyway.
+`browser_navigate` and `browser_new_tab` accept `http:`, `https:` and `about:` URLs, and refuse
+everything else by name. That rules out `javascript:` (which would execute in whatever page is open),
+`file:` (which would read the disk through the browser, around the file sandbox above), and the
+browser's own `chrome://` / `edge://` pages, which no extension can read.
+
+A settings page gets one answer from every tool: `RESTRICTED_PAGE` — *"a browser settings page cannot
+be read by the agent; a person must look at it."* A screenshot of a settings tab the user opened says
+the same, before trying to capture. **Fixed 2026-10-02:** `browser_new_tab` used to open such a page,
+and the next call on it reported `TAB_GONE` — "the tab has closed" — while the tab was still open.
 
 This is a scheme check, not a site policy — it is always on and there is nothing to configure. To
 restrict *which sites*, use the allow and deny lists below.
@@ -1934,6 +2149,19 @@ needs-improvement / poor rating** instead of handing over a file; `{action:'anal
 re-reads a trace saved earlier without recording another. A metric the trace did not contain is
 reported as missing, never as zero.
 
+#### A hidden page is refused, not measured
+
+Chrome reports no LCP for a page that loads while nobody can see it (a minimised window, or a
+background tab). A trace with `reload` or `autoStop` on such a page used to attach the debugger,
+reload, record — about 11 s on a real site in the plan 13 benchmark — and only then say the window
+was not visible. It now asks the page first and refuses at once with `TAB_HIDDEN`, before attaching,
+reloading or recording anything; the live check holds it under 1 s. `browser_switch_tab` brings the
+tab forward (restoring a minimised window), after which the same call reports an LCP.
+
+Limits: a manual `{action:'start'}` with no reload is NOT refused — long tasks need no paint, and
+the agent may be driving the hidden page on purpose. A page that hides part-way through a recording
+is not caught. Bringing the tab forward takes the user's screen, so an agent should ask first.
+
 `browser_perf_field_data {url}` answers the other half — what real Chrome users experienced at p75 —
 and touches no browser at all. It needs a free Chrome UX Report API key in `AUTOMATE_BROWSER_CRUX_KEY`
 and is inert without one. **It sends the URL you ask about to Google's public CrUX API**, and
@@ -2048,6 +2276,12 @@ meant most people got one half and never knew the other existed.
 
 A local path also works in place of `farazpawle/automatebrowser` if you are developing against a
 checkout.
+
+**Any other agent, or no plugin system at all** — every
+[release](https://github.com/farazpawle/automatebrowser/releases/latest) carries
+`automate-browser-skill-<version>.zip`. Unzip it into the agent's skills folder (`~/.claude/skills/`
+for Claude Code, or wherever your client looks); it unpacks to one `automate-browser/` folder. This
+copies the skill only, so register the server as well.
 
 Or from a shell: `claude plugin marketplace add /path/to/AutomateBrowser` then
 `claude plugin install automate-browser@automatebrowser`. Verify a manifest change with

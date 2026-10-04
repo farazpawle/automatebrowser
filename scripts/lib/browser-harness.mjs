@@ -145,7 +145,9 @@ export function makeController(env) {
   const child = spawn(process.execPath, [path.join(ROOT, "dist", "index.js")], {
     cwd: ROOT,
     stdio: ["pipe", "pipe", "pipe"],
-    env: { ...process.env, ...env },
+    // The suite reads `structuredContent` (full ids, navigation timings), which a
+    // controller withholds by default since plan 14 (F2).
+    env: { ...process.env, AUTOMATE_BROWSER_STRUCTURED: "1", ...env },
   });
   let out = "";
   let stderr = "";

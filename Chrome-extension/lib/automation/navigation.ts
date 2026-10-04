@@ -16,7 +16,8 @@
  */
 import { cdpScreenshot } from "./advanced";
 import * as cdp from "./cdp";
-import { parseRef } from "./driver";
+import { domQuietPage, parseRef } from "./driver";
+import { inFlight, lastMainFrame } from "./network";
 import { runFunc } from "./run-func";
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -27,6 +28,9 @@ type NavResult = {
   urlAfter?: string;
   settled: boolean;
   elapsedMs: number;
+  /** Set when the load ended on Chrome's own error page (F1). */
+  loadError?: string;
+  failedUrl?: string;
 };
 type SettleOptions = {
   waitUntil?: "none" | "auto" | "load" | "networkidle";
@@ -91,6 +95,8 @@ async function transitionUnderway(tabId: number): Promise<boolean> {
 }
 
 interface NavWatch {
+  /** When the watch was armed — just before the transition was issued. */
+  readonly armedAt: number;
   /**
    * Resolve once the armed transition concludes. `budgetMs` is measured from
    * when the watch was ARMED, not from this call, so asking twice (once for the
@@ -174,6 +180,7 @@ function watchNavigation(tabId: number): NavWatch {
   chrome.tabs.onReplaced.addListener(onReplaced);
 
   return {
+    armedAt,
     async settled(budgetMs: number): Promise<boolean> {
       if (outcome !== undefined) return outcome;
       // The timer is cleared the moment the navigation concludes: a 15 s handle
@@ -214,6 +221,37 @@ function watchNavigation(tabId: number): NavWatch {
   };
 }
 
+/**
+ * After the load (F14). The load event fires before a script-rendered page has
+ * drawn anything, so the default snapshot read YouTube's empty shell (T35).
+ * Both waits come out of the caller's settle budget, never on top of it.
+ */
+const QUIET_MS = 300; // mutation-free window that counts as "the page has drawn"
+const QUIET_CAP_MS = 1500;
+const IDLE_MS = 500; // no request in flight for this long = "network idle"
+// ponytail: fixed cap. A page holding a long-poll or a socket never goes idle,
+// so "networkidle" there always costs the full cap; per-type filtering if that bites.
+const IDLE_CAP_MS = 5000;
+
+async function pageQuiet(tabId: number, budgetMs: number): Promise<void> {
+  if (budgetMs <= 0) return;
+  try {
+    await runFunc(tabId, domQuietPage, [QUIET_MS, Math.min(QUIET_CAP_MS, budgetMs)]);
+  } catch {
+    /* a page that refuses injection (an error page) has nothing to wait for */
+  }
+}
+
+async function networkIdle(tabId: number, sinceTs: number, budgetMs: number): Promise<void> {
+  const end = Date.now() + Math.min(IDLE_CAP_MS, Math.max(budgetMs, 0));
+  let idleSince = Date.now();
+  while (Date.now() < end) {
+    if ((await inFlight(tabId, sinceTs)) > 0) idleSince = Date.now();
+    else if (Date.now() - idleSince >= IDLE_MS) return;
+    await wait(100);
+  }
+}
+
 async function finishNavigation(
   tabId: number,
   urlBefore: string | undefined,
@@ -222,14 +260,20 @@ async function finishNavigation(
   opts: SettleOptions = {},
 ): Promise<NavResult> {
   const startedAt = Date.now();
-  const waitUntil = opts.waitUntil ?? "load";
+  const waitUntil = opts.waitUntil ?? "auto";
   const effectiveTimeout =
     waitUntil === "none"
       ? 0
       : Math.min(Math.max(opts.settleMs ?? timeoutMs, 0), timeoutMs);
   const settled = effectiveTimeout > 0 ? await watch.settled(effectiveTimeout) : false;
-  if (settled && waitUntil === "networkidle") await wait(500);
+  const left = () => effectiveTimeout - (Date.now() - startedAt);
+  if (settled && waitUntil === "auto") await pageQuiet(tabId, left());
+  if (settled && waitUntil === "networkidle") await networkIdle(tabId, watch.armedAt, left());
   const urlAfter = await currentUrl(tabId);
+  // F1: Chrome's error page loads like any page, so "settled" alone said ok about
+  // a host that never answered. Asked only of a load that FINISHED: a download
+  // also aborts its top-level request, but it never loads, so it is not a failure.
+  const failed = settled ? await lastMainFrame(tabId, watch.armedAt) : undefined;
   return {
     ok: true,
     navigated: !!urlBefore && !!urlAfter && urlBefore !== urlAfter,
@@ -237,6 +281,7 @@ async function finishNavigation(
     urlAfter,
     settled,
     elapsedMs: Date.now() - startedAt,
+    ...(failed?.error ? { loadError: failed.error, failedUrl: failed.url } : {}),
   };
 }
 
@@ -631,6 +676,15 @@ export async function screenshot(
 }> {
   const tab = await chrome.tabs.get(tabId);
   if (tab.windowId == null) throw new Error("Tab has no window");
+  // Neither capture path can photograph a browser settings page, and the
+  // debugger's "Cannot access a chrome:// URL" used to read as a closed tab
+  // (plan 14, F3). Decided on the URL, never on the error text. Same list as
+  // the server's `assertSafeUrl` — the two bundles share no code.
+  if (/^(chrome|edge|brave|opera|vivaldi|chrome-extension|chrome-untrusted|devtools):/.test(tab.url ?? "")) {
+    throw new Error(
+      `RESTRICTED_PAGE: ${tab.url}: a browser settings page cannot be read by the agent; a person must look at it.`,
+    );
+  }
 
   // Can `captureVisibleTab` be trusted for THIS tab right now?
   //

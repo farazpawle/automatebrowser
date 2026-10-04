@@ -11,7 +11,7 @@ import { Context } from "@/context";
 import type { Resource } from "@/resources/resource";
 import { callTool } from "@/tools/call";
 import { errorResult } from "@/tools/errors";
-import { wireSchema, type Tool } from "@/tools/tool";
+import { wireResult, wireSchema, type Tool } from "@/tools/tool";
 import { debugLog } from "@/utils/log";
 import { logRootSources, setRoots } from "@/utils/paths";
 
@@ -103,7 +103,7 @@ export async function createServerWithTools(options: Options): Promise<Server> {
       // with the CLI. A throw here ⇒ the catch below returns isError.
       const result = await callTool(context, tool, request.params.arguments);
       debugLog(`[tool] name=${request.params.name} ms=${Date.now() - startedAt}`);
-      return result;
+      return wireResult(result);
     } catch (error) {
       debugLog(
         `[tool] name=${request.params.name} ms=${Date.now() - startedAt} error=${String(error)}`,
@@ -112,7 +112,7 @@ export async function createServerWithTools(options: Options): Promise<Server> {
       // agent that reads prose, and as structuredContent for one that does not.
       // Shaped in `errors.ts` so the rule about which tools can carry the
       // structured half is testable without standing a server up (I04).
-      return errorResult(tool, error);
+      return wireResult(errorResult(tool, error));
     }
   });
 

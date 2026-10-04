@@ -8,6 +8,7 @@ import type { Context } from "@/context";
 import { captureAriaSnapshot } from "@/utils/aria-snapshot";
 
 import { callTimeout, includeArg, timeoutArg } from "./args";
+import { ToolError } from "./errors";
 import type { Tool, ToolFactory } from "./tool";
 
 const SAFE_URL_SCHEMES = new Set(["http:", "https:", "about:"]);
@@ -15,7 +16,7 @@ const settleArgs = {
   waitUntil: z
     .enum(["none", "auto", "load", "networkidle"])
     .optional()
-    .describe("Page-settle mode; default load."),
+    .describe("Page-settle mode; default auto."),
   settleMs: z
     .number()
     .int()
@@ -56,12 +57,27 @@ export const NavigateArgs = NavigateTool.shape.arguments.extend({
 });
 export const GoArgs = z.object({ ...settleArgs, ...timeoutArg }).strict();
 
-function assertSafeUrl(rawUrl: string): void {
+/**
+ * Browser-internal pages: no extension may script or capture them, so every tool
+ * refuses them with one sentence (plan 14, F3). The extension's screenshot keeps
+ * its own copy of this list — the two bundles share no code.
+ */
+const SETTINGS_SCHEMES =
+  /^(chrome|edge|brave|opera|vivaldi|chrome-extension|chrome-untrusted|devtools):$/;
+
+/** Refuse a URL no tool may open. Shared by `browser_navigate` and `browser_new_tab`. */
+export function assertSafeUrl(rawUrl: string): void {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
   } catch {
     throw new Error(`Invalid URL: ${rawUrl}`);
+  }
+  if (SETTINGS_SCHEMES.test(parsed.protocol)) {
+    throw new ToolError(
+      "RESTRICTED_PAGE",
+      `${rawUrl}: a browser settings page cannot be read by the agent; a person must look at it.`,
+    );
   }
   if (!SAFE_URL_SCHEMES.has(parsed.protocol)) {
     throw new Error(
@@ -114,6 +130,40 @@ function sameUrl(a: unknown, b: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * F1: the extension reports `loadError` when the load ended on Chrome's own error
+ * page. Thrown before any snapshot — that page has nothing to read, and the
+ * snapshot's failure on it used to arrive as RESTRICTED_PAGE with chrome://
+ * advice, which sent agents looking for the wrong problem.
+ *
+ * Only the error's PRESENCE decides; its text is Chrome's and is passed through.
+ * The http-to-https note reads the two urls, never the error.
+ */
+function assertLoaded(result: Record<string, unknown>, asked: string | undefined): void {
+  if (typeof result.loadError !== "string") return;
+  const failed = typeof result.failedUrl === "string" ? result.failedUrl : (asked ?? "the page");
+  let upgraded = false;
+  try {
+    upgraded =
+      !!asked &&
+      new URL(asked).protocol === "http:" &&
+      new URL(failed).protocol === "https:" &&
+      new URL(asked).host === new URL(failed).host;
+  } catch {
+    // An unparseable url cannot have been upgraded; say nothing about it.
+  }
+  throw new ToolError(
+    "NAVIGATION_FAILED",
+    `${asked ?? failed} did not load — Chrome showed its error page instead (${result.loadError}` +
+      `${sameUrl(failed, asked) ? "" : ` for ${failed}`}). ` +
+      (upgraded
+        ? `You asked for http://; Chrome upgraded it to https ("Always use secure connections") ` +
+          `and the https version failed. Only a person can allow the http site in Chrome. `
+        : "") +
+      `Nothing on that page can be read or clicked.`,
+  );
 }
 
 /**
@@ -177,6 +227,7 @@ export const navigate: ToolFactory = (snapshot) => ({
     const result = (await context.sendSocketMessage("browser_navigate", args, {
       timeoutMs: callTimeout(params, mcpConfig.timeouts.navigation),
     })) as Record<string, unknown>;
+    assertLoaded(result, url);
     // The extension reports where the tab actually ended up, and a navigation
     // that never happened still answers `ok`. "Navigated to X" is therefore a
     // claim, not a report — and it is the sentence B09's regression hid behind:

@@ -9,10 +9,7 @@ export const WaitForArgs = z
       .string()
       .optional()
       .describe("CSS selector to wait for. Combined with `state` to control what 'ready' means."),
-    text: z
-      .string()
-      .optional()
-      .describe("Text substring to wait for in the page body. Case-sensitive."),
+    text: z.string().optional().describe("Text in the page body, or /regex/. Case-sensitive."),
     urlPattern: z
       .string()
       .optional()
@@ -20,9 +17,7 @@ export const WaitForArgs = z
     state: z
       .enum(["visible", "hidden", "attached", "detached"])
       .optional()
-      .describe(
-        "Required selector state. Defaults to 'visible'. Ignored when only `text` or `urlPattern` is provided.",
-      ),
+      .describe("Default 'visible'. With `text`, 'hidden'/'detached' wait until it is gone."),
     timeoutMs: z
       .number()
       .int()

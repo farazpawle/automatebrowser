@@ -6,6 +6,7 @@
  * `index` returned by `browser_list_tabs` round-trips back through
  * `browser_switch_tab` / `browser_close_tab`.
  */
+import { runFunc } from "./run-func";
 
 export interface TabInfo {
   index: number;
@@ -117,13 +118,42 @@ export async function newTab(payload: {
   return { tabId: tab.id ?? -1, index: tab.index ?? -1, incognito: !!tab.incognito };
 }
 
-export async function switchTab(ref: TabRef): Promise<{ tabId: number }> {
+/**
+ * Runs in the page: its own visibility, waiting up to `ms` for it to become
+ * visible, because a window that was just restored reports "hidden" for a beat.
+ */
+function visibleWithin(ms: number): Promise<string> {
+  if (document.visibilityState === "visible") return Promise.resolve("visible");
+  return new Promise((done) => {
+    const answer = () => done(document.visibilityState);
+    document.addEventListener("visibilitychange", answer, { once: true });
+    setTimeout(answer, ms);
+  });
+}
+
+export async function switchTab(
+  ref: TabRef,
+): Promise<{ tabId: number; visibilityState?: string }> {
   const tabId = await resolveTabRef(ref);
   const tab = await chrome.tabs.update(tabId, { active: true });
   if (tab?.windowId != null) {
+    // Focusing does NOT un-minimise a window (Chrome documents it, and the plan 13
+    // benchmark hit it): restore first, then focus. Only on this explicit switch,
+    // which already takes the user's screen (decision D1).
+    const win = await chrome.windows.get(tab.windowId);
+    if (win.state === "minimized") {
+      await chrome.windows.update(tab.windowId, { state: "normal" });
+    }
     await chrome.windows.update(tab.windowId, { focused: true });
   }
-  return { tabId };
+  // Report what the PAGE says, never what was asked for: OS focus rules can keep
+  // the window behind others. A page that cannot be asked (a settings page) gets
+  // no claim either way.
+  try {
+    return { tabId, visibilityState: await runFunc(tabId, visibleWithin, [1000]) };
+  } catch {
+    return { tabId };
+  }
 }
 
 export async function closeTab(ref: TabRef): Promise<{ tabId: number }> {

@@ -77,6 +77,11 @@ Closing the tab ends the session. There is nothing to clean up, and nothing surv
 true }` is the only argument that does. Both are for one situation: the user asked to be *shown*
 something.
 
+`browser_switch_tab` restores a **minimised** window before focusing it, then ends its reply with what
+the page reports: `— the page is visible`, or `— but the page is still hidden` (Windows kept the
+window behind others, or it is covered or on another desktop). Read that ending before a step that
+needs a drawn page — a real click, a trace. No ending means it could not be asked (a settings page).
+
 Everything else — navigating, clicking, typing, reading, snapshotting, screenshotting — runs on a
 background tab without disturbing them. Assume the user is working in another window the entire time
 you are running, because they usually are.

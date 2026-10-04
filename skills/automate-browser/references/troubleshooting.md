@@ -80,6 +80,8 @@ This is a user-visible situation. Say which of the four you think it is rather t
 Almost always a **dialog**. An `alert`, `confirm`, `prompt` or a "Leave site?" prompt freezes the
 page, so anything injected into it never runs and the call waits out its whole budget.
 `browser_handle_dialog` clears it. Tools that touch the page name this cause in the timeout message.
+If instead the tab **started loading a new page** during the call, the message says that and names
+the page: the action most likely landed. Take a snapshot before repeating it.
 
 ## An action reports success but nothing happened
 
@@ -114,9 +116,11 @@ See [tabs-and-multi-agent.md](tabs-and-multi-agent.md) for the full ownership mo
 | `STALE_REF` | The page re-rendered under you | `browser_snapshot`, then reuse the new ref |
 | `BAD_ARGS` | The arguments could not be understood, so **nothing ran** | Fix the call and send it again. The commonest cause is refs from two different frames in one call, or a half-written `f3:` prefix — see [page-interaction](./page-interaction.md) |
 | `NOT_ACTIONABLE` | Hidden, disabled, moving, or covered | The message names the failing check and what covered it |
-| `RESTRICTED_PAGE` | Browser-internal page | Open a normal page |
+| `RESTRICTED_PAGE` | Browser settings page (`chrome://`, `edge://`), store or PDF viewer — not a closed tab | Ask the person to look at it, or open a normal page |
+| `NAVIGATION_FAILED` | The page did not load: Chrome showed its own error page (the message carries Chrome's `net::ERR_…` and the url that failed) — or a tool hit that error page later | **Do not read or click on**; nothing is there. Check the url, or try again later if the site is down. If the message says Chrome **upgraded http to https**, only a person can allow the http site in Chrome |
 | `ADVANCED_MODE_REQUIRED` | Needs the debugger | `browser_advanced_mode { enable: true }` |
 | `CAPTURE_STALLED` | Chrome stopped drawing a tab nobody is looking at, so the screenshot got no frame | **Just call it again** — this one is marked retryable, and a repeat usually works. `browser_switch_tab` always captures, at the cost of the user's focus |
+| `TAB_HIDDEN` | Chrome is not drawing the tab (minimised window or background tab): real input would be discarded and a page load reports no LCP, so a trusted click / key / hover or a `reload`/`autoStop` trace refuses up front | `browser_switch_tab` restores the window — it takes the user's screen, so **ask first**. For click / key / hover, turning advanced mode off uses synthetic input, which works hidden |
 | `ORIGIN_BLOCKED` / `READ_ONLY` | A safety setting refused it — or, for `ORIGIN_BLOCKED` alone, the tab moved between the check and the action | `browser_status` prints the policy; a refusal it explains is the operator's choice, not a bug. A message saying the target **moved between the safety check and the action** is the other case: nothing was sent, so call it again |
 | `EVAL_BLOCKED` | Running JavaScript you wrote is switched off for this server | **Do not retry, and do not look for another way in — there isn't one.** Read the page with `browser_snapshot`, `browser_find` or `browser_read_page` instead, and drive it by clicking. Only `browser_eval` and `browser_navigate`'s `initScript` are refused; everything else works normally |
 | `CSP_BLOCKED`, `CORS_BLOCKED`, `MIXED_CONTENT`, `THIRD_PARTY_COOKIE_BLOCKED`, `DEPRECATED_API` | Browser-detected issues | Surfaced by `browser_issues`; these are page bugs, not tool bugs |

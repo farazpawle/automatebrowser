@@ -31,6 +31,8 @@ interface NavResult {
   urlAfter?: string;
   settled: boolean;
   elapsedMs: number;
+  loadError?: string;
+  failedUrl?: string;
 }
 
 interface NavigationModule {
@@ -164,14 +166,38 @@ function fakeTabs(script: Beat[] = []) {
  * onto the same timeline as the tab's events, and the order of the two is what
  * the assertion reads.
  */
-function loadNavigation(script: Beat[] = []) {
+function loadNavigation(
+  script: Beat[] = [],
+  mainFrame?: { url: string; error?: string; start: number },
+  /** F14: requests still in flight, by ms since the module loaded. */
+  inFlightAt: (sinceLoadMs: number) => number = () => 0,
+) {
   const tabs = fakeTabs(script);
+  const loadedAt = Date.now();
+  /** Every injected function navigation ran, with its arguments. */
+  const injected: Array<{ name: string; args: unknown[] }> = [];
   const mod = loadExtensionModule<NavigationModule>(NAVIGATION, {
     globals: { chrome: tabs.chrome },
     mocks: {
+      // The request log is its own module with its own test; here it only has
+      // to say what the newest top-level request of this navigation ended in.
+      "./network": {
+        lastMainFrame: async (_tabId: number, since: number) =>
+          mainFrame && mainFrame.start >= since ? mainFrame : undefined,
+        inFlight: async () => inFlightAt(Date.now() - loadedAt),
+      },
       "./advanced": { cdpScreenshot: async () => ({ data: "", mimeType: "image/png" }) },
-      "./driver": { parseRef: (ref: string) => ({ frameId: 0, bare: ref }) },
-      "./run-func": { runFunc: async () => ({ ok: true }) },
+      "./driver": {
+        parseRef: (ref: string) => ({ frameId: 0, bare: ref }),
+        domQuietPage: function domQuietPage() {},
+      },
+      "./run-func": {
+        runFunc: async (_tab: number, fn: { name: string }, args: unknown[]) => {
+          injected.push({ name: fn.name, args });
+          tabs.note(`inject:${fn.name}`);
+          return true;
+        },
+      },
       "./cdp": {
         requireAttached: () => {},
         addInitScript: async () => {
@@ -191,6 +217,7 @@ function loadNavigation(script: Beat[] = []) {
   return {
     nav: mod.exports,
     tabs,
+    injected,
     dispose: () => {
       tabs.stop();
       mod.dispose();
@@ -375,11 +402,164 @@ describe("navigation waits for the navigation it asked for", () => {
     }
   });
 
+  it("a load that ended on Chrome's error page reports the error (F1)", async () => {
+    // An error page commits like any other document — loading, then complete —
+    // so `settled` alone said ok about a host that never answered.
+    const { nav, dispose } = loadNavigation(
+      [
+        { afterMs: 20, status: "loading" },
+        { afterMs: 120, status: "complete", url: "https://down.test/" },
+      ],
+      {
+        url: "https://down.test/",
+        error: "net::ERR_CONNECTION_REFUSED",
+        start: Date.now() + 60_000,
+      },
+    );
+    try {
+      const r = await nav.navigate(TAB_ID, "https://down.test/", {});
+      assert.equal(r.settled, true);
+      assert.equal(r.loadError, "net::ERR_CONNECTION_REFUSED");
+      assert.equal(r.failedUrl, "https://down.test/");
+    } finally {
+      dispose();
+    }
+  });
+
+  it("an error from BEFORE this navigation is not this navigation's error", async () => {
+    const { nav, dispose } = loadNavigation(
+      [
+        { afterMs: 20, status: "loading" },
+        { afterMs: 120, status: "complete", url: "https://example.test/b" },
+      ],
+      { url: "https://old.test/", error: "net::ERR_NAME_NOT_RESOLVED", start: Date.now() - 60_000 },
+    );
+    try {
+      const r = await nav.navigate(TAB_ID, "https://example.test/b", {});
+      assert.equal(r.loadError, undefined);
+    } finally {
+      dispose();
+    }
+  });
+
+  it("a transition that never loaded (a download) is not called a failure", async () => {
+    // A download aborts its top-level request but leaves the tab where it was.
+    // Only a load that actually finished can have finished on an error page.
+    const { nav, dispose } = loadNavigation([], {
+      url: "https://example.test/file.zip",
+      error: "net::ERR_ABORTED",
+      start: Date.now() + 60_000,
+    });
+    try {
+      const r = await nav.navigate(TAB_ID, "https://example.test/file.zip", {});
+      assert.equal(r.settled, false);
+      assert.equal(r.loadError, undefined);
+    } finally {
+      dispose();
+    }
+  });
+
   it("removes every listener when the transition itself throws", async () => {
     const { nav, tabs, dispose } = loadNavigation([]);
     try {
       await assert.rejects(() => nav.navigate(TAB_ID, undefined, {}));
       assert.equal(tabs.open(), 0, "a rejected call left the tab being watched");
+    } finally {
+      dispose();
+    }
+  });
+});
+
+describe("a page open waits for the page to go quiet (F14)", () => {
+  const loads = (): Beat[] => [
+    { afterMs: 20, status: "loading" },
+    { afterMs: 80, status: "complete", url: "https://example.test/b" },
+  ];
+  const quietRuns = (injected: Array<{ name: string; args: unknown[] }>) =>
+    injected.filter((i) => i.name === "domQuietPage");
+
+  it("by default runs the DOM-quiet probe after the load: 300 ms quiet, capped at 1.5 s", async () => {
+    const { nav, tabs, injected, dispose } = loadNavigation(loads());
+    try {
+      const r = await nav.navigate(TAB_ID, "https://example.test/b", {});
+      assert.equal(r.settled, true);
+      assert.deepEqual(
+        quietRuns(injected).map((i) => [...i.args]),
+        [[300, 1500]],
+      );
+      const order = tabs.timeline.map((t) => t.what);
+      assert.ok(
+        order.indexOf("inject:domQuietPage") > order.indexOf("tab:complete url"),
+        order.join(", "),
+      );
+    } finally {
+      dispose();
+    }
+  });
+
+  it("the probe never outruns the caller's settleMs", async () => {
+    const { nav, injected, dispose } = loadNavigation(loads());
+    try {
+      await nav.navigate(TAB_ID, "https://example.test/b", { settleMs: 400 });
+      const cap = quietRuns(injected)[0]?.args[1] as number;
+      assert.ok(cap > 0 && cap <= 400, `cap ${cap}`);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('"load" stays the load event alone', async () => {
+    const { nav, injected, dispose } = loadNavigation(loads());
+    try {
+      await nav.navigate(TAB_ID, "https://example.test/b", { waitUntil: "load" });
+      assert.equal(quietRuns(injected).length, 0);
+    } finally {
+      dispose();
+    }
+  });
+
+  it("a load that did not finish is not probed", async () => {
+    const { nav, injected, dispose } = loadNavigation([]);
+    try {
+      const r = await nav.navigate(TAB_ID, "https://example.test/b", {});
+      assert.equal(r.settled, false);
+      assert.equal(quietRuns(injected).length, 0);
+    } finally {
+      dispose();
+    }
+  });
+});
+
+describe('"networkidle" waits for the requests, not a fixed 500 ms (F14)', () => {
+  it("waits until nothing has been in flight for 500 ms", async () => {
+    // Requests run until 900 ms after the call; idle must then hold 500 ms more.
+    const { nav, dispose } = loadNavigation(
+      [
+        { afterMs: 20, status: "loading" },
+        { afterMs: 80, status: "complete", url: "https://example.test/b" },
+      ],
+      undefined,
+      (ms) => (ms < 900 ? 2 : 0),
+    );
+    try {
+      const r = await nav.navigate(TAB_ID, "https://example.test/b", { waitUntil: "networkidle" });
+      assert.ok(
+        r.elapsedMs >= 1250,
+        `returned after ${r.elapsedMs} ms - before the network went idle`,
+      );
+    } finally {
+      dispose();
+    }
+  });
+
+  it("an idle page returns after the 500 ms idle window, not longer", async () => {
+    const { nav, dispose } = loadNavigation([
+      { afterMs: 20, status: "loading" },
+      { afterMs: 80, status: "complete", url: "https://example.test/b" },
+    ]);
+    try {
+      const r = await nav.navigate(TAB_ID, "https://example.test/b", { waitUntil: "networkidle" });
+      assert.ok(r.elapsedMs >= 550 && r.elapsedMs < 1000, `${r.elapsedMs} ms`);
     } finally {
       dispose();
     }

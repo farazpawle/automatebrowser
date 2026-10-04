@@ -239,8 +239,10 @@ corrected call is safe to make.
 
 - **`browser_perf_trace`** records a trace of this machine on this run and returns **Core Web Vitals**
   — LCP, FCP, CLS, INP — rated against Google's thresholds, plus the long tasks that blocked the main
-  thread. Needs advanced mode. `action: "analyze"` re-reads a saved trace later with no browser at
-  all.
+  thread. Attaches the debugger itself. `action: "analyze"` re-reads a saved trace later with no
+  browser at all. **A load is only measured on a page on screen:** with `reload` or `autoStop` on a
+  hidden page it refuses at once with `TAB_HIDDEN` — ask the user, then `browser_switch_tab` and call
+  again.
 - **It also breaks the LCP down and names the cause.** Where the vitals tell you *that* a page was
   slow, the breakdown tells you *which part* was: time to first byte, resource load delay, resource
   load time and render delay, each with its share of the total, followed by one line naming the cause
@@ -314,12 +316,17 @@ setting.
 `browser_advanced_mode { enable: true }` attaches the Chrome debugger to your tab. While attached, the
 browser shows a banner saying so.
 
-**Required for:** `browser_upload_file`, `browser_get_network_request`, `browser_perf_trace` (all
-actions except `memory`, which is debugger-free), some `browser_emulate` options, and
-`browser_navigate`'s `initScript` / `handleBeforeUnload`.
+**Required for:** `browser_upload_file`, `browser_get_network_request`, some `browser_emulate`
+options, and `browser_navigate`'s `initScript` / `handleBeforeUnload`. Not for `browser_perf_trace`:
+a recording attaches by itself (below), and `memory` is debugger-free.
 
-**Attached for you automatically, briefly, by:** `fullPage: true` screenshots, and screenshots of a
-background tab.
+**Attached for you automatically, briefly, by:** `fullPage: true` screenshots, screenshots of a
+background tab, and a `browser_perf_trace` recording (detached again on stop).
+
+**Only `browser_advanced_mode` switches your input to real.** A capture that keeps the debugger
+attached (`keepEnabled: true`) or a trace leaves clicks, keys and hovers on the default path, which
+works in a hidden tab. Asking `browser_advanced_mode {}` then says OFF while still listing the
+attached tab: the banner is up, but your input is unchanged.
 
 **While attached, a `browser_click` on a CROSS-origin frame's ref is refused** — the trusted click
 path drives one debugger session and cannot reach another origin's frame. Turn advanced mode off and
@@ -334,8 +341,8 @@ the point. Until 2026-09-01 they did not, so turning this on for an unrelated re
 both the shape and the timing of every click.
 
 **But it makes clicking impossible on a background tab, which is where you normally work.** Chrome
-**discards** real input aimed at a tab it is not drawing. So with advanced mode on, `browser_click`
-and `browser_press_key` **refuse outright** on your background tab and tell you to bring it forward or
+**discards** real input aimed at a tab it is not drawing. So with advanced mode on, `browser_click`,
+`browser_hover` and `browser_press_key` **refuse outright** on your background tab and tell you to bring it forward or
 turn the mode off — they never report a success that did not happen. The practical rule: enable
 advanced mode for what needs it (a response body, a trace, an upload), then **turn it off again before
 you interact**. The default path works perfectly in a hidden tab; the trusted one cannot.

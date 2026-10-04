@@ -110,9 +110,9 @@ export const find: Tool = {
   schema: {
     name: "browser_find",
     description:
-      "Find elements by text, role, and/or CSS selector and return fresh refs WITHOUT a full " +
+      "Find elements by text, role, and/or CSS selector and return refs WITHOUT a full " +
       "snapshot. Use when you already know what you want to click/type — cheaper than browser_snapshot. " +
-      "The returned [ref=eN] values are usable by browser_click/type/etc. until the next snapshot/find.",
+      "The returned [ref=eN] values work with browser_click/type/etc.",
     inputSchema: zodToJsonSchema(FindArgs),
     annotations: {
       readOnlyHint: true,
@@ -128,13 +128,24 @@ export const find: Tool = {
       role: string;
       name: string;
       tag: string;
+      attrs?: Record<string, string>;
+      hidden?: boolean;
     }>;
+    // The tag is printed when it says something the role does not (a <div> acting
+    // as a button, an <input>) or carries attributes - F11's <meta content>,
+    // <relative-time datetime>. A plain <button> reads exactly as before.
+    const line = (m: (typeof matches)[number]) => {
+      // Sorted: key order does not survive the trip from the page.
+      const attrs = Object.entries(m.attrs ?? {})
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => ` ${k}=${JSON.stringify(v)}`)
+        .join("");
+      const tag = m.tag && (m.tag !== m.role || attrs) ? ` <${m.tag}${attrs}>` : "";
+      const name = m.name ? ` "${m.name}"` : "";
+      return `- ${m.role}${name} [ref=${m.ref}]${tag}${m.hidden ? " (hidden)" : ""}`;
+    };
     const text =
-      matches.length === 0
-        ? "(no matching elements found)"
-        : matches
-            .map((m) => `- ${m.role}${m.name ? ` "${m.name}"` : ""} [ref=${m.ref}]`)
-            .join("\n");
+      matches.length === 0 ? "(no matching elements found)" : matches.map(line).join("\n");
     return { content: [{ type: "text", text }] };
   },
 };

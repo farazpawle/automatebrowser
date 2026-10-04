@@ -53,3 +53,6 @@ BKP/
 # committed it. Same reason for the per-developer Claude settings.
 .gitnexus/
 .claude/settings.local.json
+
+# Release downloads built by scripts/pack-release.mjs
+release/

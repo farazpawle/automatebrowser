@@ -5,6 +5,8 @@ import type {
 } from "@modelcontextprotocol/sdk/types.js";
 import type { JsonSchema7Type } from "zod-to-json-schema";
 
+import { structuredReplies } from "@repo/config/mcp.config";
+
 import type { Context } from "@/context";
 import type { PathMode } from "@/utils/paths";
 
@@ -32,6 +34,10 @@ export type ToolSchema = {
  * Stripped HERE, at the two points a schema leaves this process, and not at the
  * 46 `zodToJsonSchema` call sites: same bytes off the wire, one place to look
  * when it is ever wrong.
+ *
+ * `outputSchema` is dropped too unless `AUTOMATE_BROWSER_STRUCTURED` is on: a
+ * declared output schema obliges a `structuredContent` result, which
+ * `wireResult` withholds by default.
  */
 export function wireSchema(schema: ToolSchema): ToolSchema {
   const strip = <T>(value: T): T => {
@@ -39,10 +45,13 @@ export function wireSchema(schema: ToolSchema): ToolSchema {
     const { $schema: _dialect, ...rest } = value as Record<string, unknown>;
     return rest as T;
   };
+  const { outputSchema, ...rest } = schema;
   return {
-    ...schema,
+    ...rest,
     inputSchema: strip(schema.inputSchema),
-    ...(schema.outputSchema === undefined ? {} : { outputSchema: strip(schema.outputSchema) }),
+    ...(outputSchema === undefined || !structuredReplies()
+      ? {}
+      : { outputSchema: strip(outputSchema) }),
   };
 }
 
@@ -77,6 +86,21 @@ export type ToolResult = {
    */
   outcome?: ToolOutcome;
 };
+
+/**
+ * A result as it leaves for the agent: the written reply, without the data copy.
+ *
+ * Claude Code shows `structuredContent` INSTEAD of the text when both arrive
+ * (measured 2026-10-02: `browser_status` came back as bare JSON, warnings gone;
+ * benchmark T23: console page counts, no messages). So by default the copy stays
+ * inside the process — `browser_snapshot` reads it, the CLI's `--json` prints it
+ * — and only `AUTOMATE_BROWSER_STRUCTURED=1` sends it (plan 14, F2).
+ */
+export function wireResult(result: ToolResult): ToolResult {
+  if (structuredReplies()) return result;
+  const { structuredContent: _copy, ...rest } = result;
+  return rest;
+}
 
 export type Tool = {
   schema: ToolSchema;

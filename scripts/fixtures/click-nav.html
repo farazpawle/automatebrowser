@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8" />
+<!-- F11: data a page keeps where find could not see it - in <head>, in an attribute. -->
+<meta name="user-login" content="octocat" />
+<title>Click navigation</title>
+<!--
+  F4's fixture: a link whose click LEAVES the page. The injected click op waits
+  for the DOM to go quiet, and a document that unloads first never answers — the
+  call used to hang until the socket deadline and then blame a dialog.
+-->
+<p><a id="go" href="click-nav.html?page=2">Go to page two</a></p>
+<p><a id="slow" href="stage10-navigation.html?delay=1500">Go to a slow page</a></p>
+<p id="where">start</p>
+<p>Updated <relative-time datetime="2026-10-01T12:00:00Z">2 days ago</relative-time></p>
+<!-- F5: a button that acts only on a trusted click, as benchmark T05's did. -->
+<p><button id="trusted">Only a real click works</button> <span id="said"></span></p>
+<!-- F12: icon-only buttons, with no text of their own. -->
+<p>
+  <button id="buttonGenerate"><i class="icon"></i></button>
+  <button id="cog"><img alt="Settings" width="8" height="8" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" /></button>
+</p>
+<!-- F13: an answer that replaces a placeholder, and a notice that goes away. -->
+<p id="result">Result: n/a</p>
+<p id="loading">Loading...</p>
+<script>
+  setTimeout(() => (document.getElementById("result").textContent = "Result: 42"), 600);
+  setTimeout(() => document.getElementById("loading").remove(), 1200);
+  // F14: content drawn by script just after the load event, as YouTube does.
+  addEventListener("load", () =>
+    setTimeout(() => {
+      const b = document.createElement("button");
+      b.textContent = "Drawn after load";
+      document.body.append(b);
+    }, 150),
+  );
+  document.getElementById("where").textContent =
+    new URLSearchParams(location.search).get("page") || "start";
+  document.getElementById("trusted").addEventListener("click", (e) => {
+    if (e.isTrusted) document.getElementById("said").textContent = "clicked";
+  });
+</script>

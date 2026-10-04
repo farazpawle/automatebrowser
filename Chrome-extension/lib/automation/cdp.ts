@@ -17,6 +17,14 @@ const PROTOCOL_VERSION = "1.3";
 /** Tabs we currently hold a debugger session on. */
 const attached = new Set<number>();
 
+/**
+ * Tabs whose agent asked for REAL input (`browser_advanced_mode { enable:true }`).
+ * Kept apart from `attached` on purpose (plan 14, F7): a capture that attaches
+ * for its own sake (`keepEnabled`, a perf trace) must not opt clicks, keys and
+ * hovers into trusted input, which Chrome discards on a hidden tab.
+ */
+const trustedInput = new Set<number>();
+
 interface CdpNetEntry {
   requestId: string;
   url: string;
@@ -85,6 +93,15 @@ export function isAttached(tabId: number): boolean {
 
 export function attachedTabs(): number[] {
   return [...attached];
+}
+
+export function wantsTrustedInput(tabId: number): boolean {
+  return trustedInput.has(tabId);
+}
+
+/** Only advanced mode calls this; the flag dies with the session in `cleanupTab`. */
+export function markTrustedInput(tabId: number): void {
+  trustedInput.add(tabId);
 }
 
 /** Register debugger/tab lifecycle + CDP event listeners exactly once. */
@@ -156,6 +173,7 @@ export function installListeners(): void {
 
 function cleanupTab(tabId: number): void {
   attached.delete(tabId);
+  trustedInput.delete(tabId);
   netByTab.delete(tabId);
   dialogByTab.delete(tabId);
   dialogPolicyByTab.delete(tabId);

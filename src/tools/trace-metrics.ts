@@ -662,7 +662,8 @@ export function renderMetrics(m: TraceMetrics, navStartFound: boolean): string {
     const why = navStartFound
       ? "Most likely: the BROWSER WINDOW WAS NOT VISIBLE. Chrome does not paint a minimised " +
         "window or a background tab, and emits no LCP/FCP/CLS for a paint that never happened — " +
-        "un-minimise the window, browser_switch_tab to bring the tab to the front, and record " +
+        "browser_switch_tab to the tab (it restores a minimised window and brings it to the " +
+        "front), and record " +
         "again. A trace recorded with custom `categories` also needs devtools.timeline, which is " +
         "where these events live."
       : "This trace contains NO PAGE LOAD (no navigationStart), and LCP/FCP/CLS only exist for " +

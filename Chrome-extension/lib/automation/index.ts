@@ -96,14 +96,18 @@ export function createHandlerMap(ctx: AutomationContext): HandlerMap {
     browser_snapshot_full: async (p) =>
       driver.snapshotFull(await tab(p), p?.verbose === true),
     browser_eval: async (p) => driver.evaluate(await tab(p), p ?? {}),
-    // When advanced (debugger) mode is on for the tab, click/press_key use REAL
-    // trusted CDP input; otherwise they fall back to the debugger-free synthetic
-    // dispatch.
+    // When advanced mode is on for the tab, click/hover/press_key use REAL trusted
+    // CDP input; otherwise they fall back to the debugger-free synthetic dispatch.
+    // Keyed on the mode, never on an attached debugger: a capture that attached
+    // for its own sake must not change how input is sent (plan 14, F7).
     browser_click: async (p) => {
       const t = await tab(p);
-      return cdp.isAttached(t) ? advanced.nativeClick(t, p) : driver.click(t, p);
+      return cdp.wantsTrustedInput(t) ? advanced.nativeClick(t, p) : driver.click(t, p);
     },
-    browser_hover: async (p) => driver.hover(await tab(p), p),
+    browser_hover: async (p) => {
+      const t = await tab(p);
+      return cdp.wantsTrustedInput(t) ? advanced.nativeHover(t, p) : driver.hover(t, p);
+    },
     browser_drag: async (p) => driver.drag(await tab(p), p),
     browser_type: async (p) => driver.type(await tab(p), p),
     browser_select_option: async (p) => driver.selectOption(await tab(p), p),
@@ -111,7 +115,7 @@ export function createHandlerMap(ctx: AutomationContext): HandlerMap {
       const t = await tab(p);
       // `p` carries waitUntil/settleMs — the trusted path settles with the same
       // options as the synthetic one, or advanced mode silently changes timing.
-      return cdp.isAttached(t) ? advanced.nativeKey(t, p.key, p) : driver.pressKey(t, p);
+      return cdp.wantsTrustedInput(t) ? advanced.nativeKey(t, p.key, p) : driver.pressKey(t, p);
     },
     browser_get_console_logs: async (p) => driver.getConsoleLogs(await tab(p), p ?? {}),
     // One tool, two oracles: what Chrome reported about this page, or what an

@@ -111,6 +111,13 @@ export const ENV_VARS: readonly EnvVar[] = [
     default: "unset",
   },
   {
+    name: "AUTOMATE_BROWSER_STRUCTURED",
+    purpose:
+      "`1` also sends each result's `structuredContent` and lists output schemas, for scripts. " +
+      "Leave off for agents: Claude Code then shows only that data and hides the written reply",
+    default: "unset (written reply only)",
+  },
+  {
     name: "AUTOMATE_BROWSER_DELTA_FOOTER",
     purpose: "`off` disables the console-error footer below",
     default: "on",

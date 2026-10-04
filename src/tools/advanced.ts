@@ -38,8 +38,7 @@ export const advancedMode: Tool = {
     name: "browser_advanced_mode",
     description:
       "Enable/disable opt-in debugger (CDP) mode for the tab you are driving. Required before browser_upload_file, " +
-      "browser_get_network_request (response bodies), browser_perf_trace, full-page screenshots, and " +
-      "trusted native input. Attaching shows Chrome's 'debugging this browser' banner for that tab only.",
+      "browser_get_network_request (response bodies) and trusted native input. Attaching shows Chrome's 'debugging this browser' banner for that tab only.",
     inputSchema: zodToJsonSchema(AdvancedModeArgs),
     annotations: {
       readOnlyHint: false,
@@ -276,7 +275,7 @@ export const perfTrace: Tool = {
   schema: {
     name: "browser_perf_trace",
     description:
-      "Record a performance trace (requires advanced/debugger mode). action=start, then drive the page, " +
+      "Record a performance trace (attaches the debugger while recording). action=start, then drive the page, " +
       "then action=stop — the raw trace is saved to a file and LCP/FCP/INP/CLS reported. For a page-load " +
       "profile use one call: {action:'start', reload:true, autoStop:true}. action=analyze re-reads a " +
       "saved trace at filePath without recording again.",

@@ -48,7 +48,7 @@ tool exists, the gotcha tells you the thing that will cost you an hour.
 |------|-------------|
 | `browser_read_page` | Read the page's main content as clean text or Markdown (strips nav/scripts/styles) |
 | `browser_get_html` | Get the raw outerHTML of the page (or of a specific element by `ref`) |
-| `browser_find` | Find elements by text, role, and/or CSS selector and return fresh refs WITHOUT a full snapshot |
+| `browser_find` | Find elements by text, role, and/or CSS selector and return refs WITHOUT a full snapshot |
 
 ### Page-declared tools
 Actions the PAGE publishes about itself, which an agent can call directly instead of finding and clicking controls for. Forward-looking: the standard is a draft and almost no live site declares anything yet, so `list` normally comes back empty with the reason.
@@ -76,7 +76,7 @@ Actions the PAGE publishes about itself, which an agent can call directly instea
 | `browser_proxy` | Route the browser through a proxy |
 
 ### Performance
-`browser_perf_trace` measures THIS machine on THIS run and needs `browser_advanced_mode` — except `action: "memory"`, which samples the JS heap with no debugger and no banner. `browser_perf_field_data` needs no browser at all - it reads Google's Chrome UX Report for what real visitors experienced, and sends the URL you ask about to that public API.
+`browser_perf_trace` measures THIS machine on THIS run. Recording attaches the debugger itself (banner) and detaches it on stop unless advanced mode was already on; `action: "memory"` samples the JS heap with no debugger and no banner. `browser_perf_field_data` needs no browser at all - it reads Google's Chrome UX Report for what real visitors experienced, and sends the URL you ask about to that public API.
 
 | Tool | Description |
 |------|-------------|
@@ -110,14 +110,15 @@ Actions the PAGE publishes about itself, which an agent can call directly instea
 
 ### Advanced (opt-in CDP)
 Attach the Chrome debugger only when you need full-fidelity input or network bodies. Enable with
-`browser_advanced_mode` first; a debugging banner shows only while it's attached.
+`browser_advanced_mode` first (a perf trace attaches by itself); a debugging banner shows only
+while it's attached.
 
 | Tool | Description |
 |------|-------------|
 | `browser_advanced_mode` | Enable/disable opt-in debugger (CDP) mode for the tab you are driving |
 | `browser_upload_file` | Set files on a file input (real upload) |
 | `browser_get_network_request` | Get a network request's response BODY, status and headers by URL substring |
-| `browser_perf_trace` | Record a performance trace (requires advanced/debugger mode) |
+| `browser_perf_trace` | Record a performance trace (attaches the debugger while recording) |
 | `browser_emulate` | Emulate location, headers, colour scheme, viewport, user agent, network or CPU |
 
 <!-- AUTO-GENERATED:tools END -->
@@ -133,7 +134,7 @@ read-only ones — snapshot, read_page, get_html, find, screenshot, eval — do 
 
 | Tool | Arguments | Gotcha |
 |---|---|---|
-| `browser_navigate` | `url`, `reload`, `ignoreCache`, `includeSnapshot`, `include`, `waitUntil`, `settleMs`, `initScript`, `handleBeforeUnload` | Runs in **your** tab, opening one in the background if you have none. `reload` re-requests the current page and takes no `url`; `ignoreCache` makes it a hard reload — the answer to "but I already fixed that". `initScript` and `handleBeforeUnload` need advanced mode, and `initScript` alone is refused with `EVAL_BLOCKED` where the operator has switched off agent-written JavaScript — drop it and the same call goes through. `settled` describes the navigation you asked for, never the page you were leaving; with `initScript` in play, `waitUntil: "none"` still waits for the new document, because a script torn down before then would never run. If the tab is not where you asked it to go, the reply opens with `Did NOT reach <url>` — including inside the snapshot reply, where the snapshot below it is then the OLD page and every ref in it belongs to that page. |
+| `browser_navigate` | `url`, `reload`, `ignoreCache`, `includeSnapshot`, `include`, `waitUntil`, `settleMs`, `initScript`, `handleBeforeUnload` | Runs in **your** tab, opening one in the background if you have none. `reload` re-requests the current page and takes no `url`; `ignoreCache` makes it a hard reload — the answer to "but I already fixed that". `initScript` and `handleBeforeUnload` need advanced mode, and `initScript` alone is refused with `EVAL_BLOCKED` where the operator has switched off agent-written JavaScript — drop it and the same call goes through. By default it also waits, after the load, for 0.3 s without a DOM change (cap 1.5 s) so a script-built page is drawn before the snapshot — `waitUntil: "load"` skips that. `settled` describes the navigation you asked for, never the page you were leaving; with `initScript` in play, `waitUntil: "none"` still waits for the new document, because a script torn down before then would never run. If the tab is not where you asked it to go, the reply opens with `Did NOT reach <url>` — including inside the snapshot reply, where the snapshot below it is then the OLD page and every ref in it belongs to that page. |
 | `browser_go_back` | `waitUntil`, `settleMs` | History is per tab, so this is your tab's history, not the user's browsing. |
 | `browser_go_forward` | `waitUntil`, `settleMs` | Silently does nothing if there is no forward entry — about a second of waiting, then an unsettled result and the same url. |
 
@@ -141,9 +142,9 @@ read-only ones — snapshot, read_page, get_html, find, screenshot, eval — do 
 
 | Tool | Arguments | Gotcha |
 |---|---|---|
-| `browser_snapshot` | `verbose`, `filePath` | The **most expensive call in the set**. Read it once to learn the page, then use `browser_find`. `filePath` keeps a big one out of your context. An `<iframe>` in the tree is only a marker — **every** frame's contents come below under their own `- frame <url>` heading with `fN:` refs, same-origin ones included, capped at 10 frames. |
-| `browser_click` | `element`, `ref`, `x`, `y`, `dblClick`, `include`, `includeSnapshot`, `waitUntil`, `settleMs` | Pass a ref **or** coordinates, never both — giving both is refused before it runs. The coordinate form reports what was actually under the point. |
-| `browser_hover` | `element*`, `ref*`, `includeSnapshot` | For menus that only open on hover. Nothing "sticks" — the next action may move the pointer. |
+| `browser_snapshot` | `verbose`, `filePath` | The **most expensive call in the set**. Read it once to learn the page, then use `browser_find`. `filePath` keeps a big one out of your context. An `<iframe>` in the tree is only a marker — **every** frame's contents come below under their own `- frame <url>` heading with `fN:` refs, same-origin ones included, capped at 10 frames. A control with no text is named by its `title`, inner image `alt`, or `#id` — an id names the element, not its purpose. |
+| `browser_click` | `element`, `ref`, `x`, `y`, `dblClick`, `include`, `includeSnapshot`, `waitUntil`, `settleMs` | Pass a ref **or** coordinates, never both — giving both is refused before it runs. The coordinate form reports what was actually under the point. A ref click the page showed no reaction to adds "No change seen on the page" — a note, not an error; some pages need a real click (advanced mode, tab visible). |
+| `browser_hover` | `element*`, `ref*`, `includeSnapshot` | By default synthetic: page scripts see it (a JS hover menu opens), CSS `:hover` does NOT apply — the reply says so. For the CSS look, `browser_advanced_mode` with the tab visible: a real mouse move, refused on a hidden tab. Nothing "sticks" — the next action may move the pointer. |
 | `browser_type` | `element*`, `ref*`, `text*`, `submit*`, `include`, `includeSnapshot`, `waitUntil`, `settleMs` | `submit` is **required**: decide explicitly whether Enter is pressed. Use `browser_clear` first rather than typing over existing content. |
 | `browser_select_option` | `element*`, `ref*`, `values*`, `includeSnapshot` | `values` is an array even for a single option, and matches by visible label or value. |
 | `browser_drag` | `startElement*`, `startRef*`, `endElement*`, `endRef*`, `includeSnapshot` | Both ends need a description as well as a ref. Both ends must also be in the **same frame** — a cross-frame drag is refused, not attempted. Some drag libraries need a real pointer sequence — if it does nothing, try advanced mode. |
@@ -154,7 +155,7 @@ read-only ones — snapshot, read_page, get_html, find, screenshot, eval — do 
 |---|---|---|
 | `browser_press_key` | `key*`, `waitUntil`, `settleMs` | Goes to the page, not to an element — focus something first. Combos are `"Control+A"`, `"Shift+Tab"`. |
 | `browser_wait` | `time*` | A blind sleep, in **seconds**. Last resort: either too short and flaky or too long and slow. Prefer `browser_wait_for`. |
-| `browser_wait_for` | `selector`, `text`, `urlPattern`, `state`, `timeoutMs` | The right tool when a site swaps content **without** navigating. Waits on a real condition instead of a guess. |
+| `browser_wait_for` | `selector`, `text`, `urlPattern`, `state`, `timeoutMs` | The right tool when a site swaps content **without** navigating. Waits on a real condition instead of a guess. A plain `text` matches a placeholder that shares its start ("Result: n/a") at once — use `/Result: \d+/`. `state: "detached"` with `text` waits for it to go. |
 
 ### Reading content
 
@@ -162,7 +163,7 @@ read-only ones — snapshot, read_page, get_html, find, screenshot, eval — do 
 |---|---|---|
 | `browser_read_page` | `format`, `maxLength` | The default answer to "what does this page say". `format: "markdown"` keeps headings and links; plain text is cheaper. |
 | `browser_get_html` | `ref`, `maxLength` | **Always pass a `ref`.** Whole-page HTML is almost never what you want and is enormous. |
-| `browser_find` | `text`, `role`, `selector`, `max` | Far cheaper than a snapshot and returns usable refs. Set `max` — an unbounded match on a big page is not the saving you wanted. |
+| `browser_find` | `text`, `role`, `selector`, `max` | Far cheaper than a snapshot and returns usable refs. Set `max` — an unbounded match on a big page is not the saving you wanted. A `text` match is the innermost element holding it, never `html`/`body`/wrappers. Only a `selector` reaches undrawn elements (`<head>`, hidden inputs), marked `(hidden)`. Matches print `id`/`href`/`title`/`datetime`/`content`. An icon-only control is named by its image's `alt`. |
 
 ### Page-declared tools
 
@@ -203,15 +204,15 @@ read-only ones — snapshot, read_page, get_html, find, screenshot, eval — do 
 | `browser_screenshot` | `format`, `ref`, `filePath`, `quality`, `fullPage`, `keepEnabled`, `frames`, `intervalMs` | Use `filePath` unless you must see it — an inlined image is one of the costliest things in a reply. On a background tab it attaches the debugger briefly (banner), and **refuses rather than returning the wrong tab's pixels** if it cannot. `frames` writes a strip to disk (needs `filePath`) — but a background tab yields **one frame every ~4s**, so switch to it first if you need motion. An **inline** image is downscaled to fit 1536x4096 device px and says so — never read coordinates off one that was; a `filePath` capture never is. A `ref` from a **same-origin** frame crops fine at any depth; one from a **cross-origin** frame is refused, because the frame's position in the tab cannot be measured from outside it — capture the viewport instead. |
 | `browser_get_console_logs` | `includePreserved`, `page` | **Paged — 50 newest entries per call**, and `page: 2` is *older*, not newer. `includePreserved` returns the previous pages' logs — the answer to "it errored then redirected". |
 | `browser_issues` | `limit`, `audit`, `page` | The **only** tool that sees failures with no console error: CSP, dropped third-party cookies, mixed content, CORS. Reach for it on "works by hand, not here". `audit: "a11y"` switches it to an axe-core accessibility audit instead — snapshot FIRST so findings carry refs, page through with `page` (`limit` sets the page size), and never report "0 violations" as "accessible": automated rules catch about a third of real barriers. |
-| `browser_eval` | `expression`, `function`, `args`, `filePath`, `dialogAction` | Use `function` + `args` of refs for anything structured. Return **JSON-serialisable** values — DOM nodes do not survive. Passing both forms, or `args` without `function`, is refused. An operator can switch this tool off entirely (`EVAL_BLOCKED`, even for a read) — if that happens, read with `browser_snapshot` or `browser_find` and stop looking for a way around it. |
+| `browser_eval` | `expression`, `function`, `args`, `filePath`, `dialogAction`, `timeout` | Default limit 8 s; pass `timeout` for slow page work — a timed-out script still runs on in the page. Use `function` + `args` of refs for anything structured. Return **JSON-serialisable** values — DOM nodes do not survive. Passing both forms, or `args` without `function`, is refused. An operator can switch this tool off entirely (`EVAL_BLOCKED`, even for a read) — if that happens, read with `browser_snapshot` or `browser_find` and stop looking for a way around it. |
 
 ### Tabs
 
 | Tool | Arguments | Gotcha |
 |---|---|---|
 | `browser_list_tabs` | (none) | Pure discovery — claims nothing, so it never locks another agent out. |
-| `browser_new_tab` | `url`, `active`, `incognito` | Opens in the **background** and is adopted automatically. `active: true` steals the user's focus — only on request. `incognito: true` gives a clean logged-out session, but needs a setting only a person can turn on; on `INCOGNITO_BLOCKED`, ask them rather than retrying. |
-| `browser_switch_tab` | `tabId`, `index` | The **only** tool that takes the user's focus. For "show me", nothing else. |
+| `browser_new_tab` | `url`, `active`, `incognito` | Opens in the **background** and is adopted automatically. `active: true` steals the user's focus — only on request. `incognito: true` gives a clean logged-out session, but needs a setting only a person can turn on; on `INCOGNITO_BLOCKED`, ask them rather than retrying. A `chrome://` / `edge://` `url` is refused (`RESTRICTED_PAGE`), as navigate refuses it. |
+| `browser_switch_tab` | `tabId`, `index` | The **only** tool that takes the user's focus. For "show me", nothing else. Restores a minimised window; the reply's ending says whether the page is really visible — "still hidden" means it is not. |
 | `browser_select_tab` | `tabId`, `index`, `url`, `title` | Adopt a tab **without** focusing it. Prefer `url`/`title` over `index`, which shifts as tabs open and close. |
 | `browser_close_tab` | `tabId`, `index` | Do not close a tab you did not open. Release already closes yours. |
 
@@ -229,8 +230,8 @@ read-only ones — snapshot, read_page, get_html, find, screenshot, eval — do 
 
 | Tool | Arguments | Gotcha |
 |---|---|---|
-| `browser_advanced_mode` | `enable` | Attaches the debugger and shows a banner. Turn it off when done. Omit `enable` to just ask whether it is on. **There is no `acceptInsecureCerts` any more** — it never worked (Chrome does not expose the domain it needed to extensions) and was deleted on 2026-09-16; passing it is refused by name. For a bad certificate, ask the user to click through the warning once by hand, or to start the browser with `--ignore-certificate-errors`. |
+| `browser_advanced_mode` | `enable` | Attaches the debugger and shows a banner, and is the **only** thing that switches click, key and hover to real input. Turn it off when done. Omit `enable` to just ask whether it is on — a capture's leftover attach reads OFF, listed under attached tabs. **There is no `acceptInsecureCerts` any more** — it never worked (Chrome does not expose the domain it needed to extensions) and was deleted on 2026-09-16; passing it is refused by name. For a bad certificate, ask the user to click through the warning once by hand, or to start the browser with `--ignore-certificate-errors`. |
 | `browser_upload_file` | `ref*`, `filePaths*`, `keepEnabled` | Needs advanced mode. The `ref` must be the file input itself, not a styled wrapper around it. A **cross-origin** frame's input is refused and says the frame is why — no fresh snapshot will help, because the debugger session does not reach into another origin. Same-origin frames (at any depth) and shadow roots work. |
-| `browser_get_network_request` | `url`, `requestId`, `maxLength`, `keepEnabled`, `revealValues` | The response **body**, plus both header sets with credential values **redacted** — `revealValues` opts out. When a URL matches several, it returns the newest and lists the rest so you can pick by `requestId`. |
-| `browser_perf_trace` | `action*`, `categories`, `filePath`, `reload`, `autoStop`, `durationMs` | `action: "analyze"` re-reads a saved trace with **no browser at all**, and `action: "memory"` samples the JS heap with **no advanced mode**. Recording needs it. `durationMs` (memory) is 1000-30000 and is refused, not clamped, outside that. A rising heap is not a leak, and there is **no heap snapshot** — Chrome blocks the domain for extensions. |
+| `browser_get_network_request` | `url`, `requestId`, `maxLength`, `keepEnabled`, `revealValues` | The response **body**, plus both header sets with credential values **redacted** — `revealValues` opts out. When a URL matches several, it returns the newest and lists the rest so you can pick by `requestId`. `keepEnabled` keeps the debugger for later reads only — your clicks stay on the default path. |
+| `browser_perf_trace` | `action*`, `categories`, `filePath`, `reload`, `autoStop`, `durationMs` | `action: "analyze"` re-reads a saved trace with **no browser at all**, and `action: "memory"` samples the JS heap with **no advanced mode**. Recording attaches the debugger itself and detaches it on stop, unless advanced mode was already on. `reload`/`autoStop` on a hidden page is refused at once (`TAB_HIDDEN`): no LCP exists for a page loaded unseen. `durationMs` (memory) is 1000-30000 and is refused, not clamped, outside that. A rising heap is not a leak, and there is **no heap snapshot** — Chrome blocks the domain for extensions. |
 | `browser_emulate` | `geolocation`, `headers`, `colorScheme`, `viewport`, `mobile`, `userAgent`, `network`, `cpuThrottling`, `clear` | Per tab, and gone with the tab. Some options need advanced mode and say so. `clear` takes them back off. |

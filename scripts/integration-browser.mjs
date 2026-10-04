@@ -675,6 +675,21 @@ ${auditText.slice(0, 1500)}`,
       );
     }
 
+    // F6: a synthetic hover never moves the browser's hover state; a trusted one
+    // must, or "the hover look is showing" is still untrue in advanced mode.
+    const hovRef = refFor(text(await A.call("browser_snapshot", {})), "Hover target");
+    const hovered = await A.call("browser_hover", { element: "Hover target", ref: hovRef });
+    assert(
+      "a TRUSTED hover says it used the real mouse",
+      !isErr(hovered) && text(hovered).includes("(real mouse)"),
+      text(hovered),
+    );
+    assert(
+      "and the element really matches :hover",
+      (await evalIn(A, "document.getElementById('hov').matches(':hover')")).includes("true"),
+      await evalIn(A, "String(document.getElementById('hov').matches(':hover'))"),
+    );
+
     // The key press is the more damaging half: Enter is how a form is submitted,
     // so a missing settle returns before the page has begun to react. Same tab,
     // which is still the foreground one.
@@ -694,6 +709,28 @@ ${auditText.slice(0, 1500)}`,
     }
     await A.call("browser_advanced_mode", { enable: false });
   }
+
+  // ── capture must not opt the agent into real input (plan 14, F7) ─────────
+  // `keepEnabled` leaves the debugger attached for later body reads. Before F7
+  // that alone switched every click, key and hover to trusted input, which a
+  // hidden tab then refused (T24). The call may find nothing captured yet; the
+  // attach it leaves behind is the point.
+  await A.call("browser_navigate", { url: base + "/index.html", includeSnapshot: false });
+  await A.call("browser_get_network_request", { url: base + "/index.html", keepEnabled: true });
+  const capStatus = text(await A.call("browser_advanced_mode", {}));
+  assert(
+    "a capture's leftover attach does not read as advanced mode ON",
+    /Advanced mode OFF/.test(capStatus) && /Attached tabs: \[\d/.test(capStatus),
+    capStatus,
+  );
+  const capRef = refFor(text(await A.call("browser_snapshot", {})), "Hover target");
+  const capHover = await A.call("browser_hover", { element: "Hover target", ref: capRef });
+  assert(
+    "after a keepEnabled capture, hover is still the synthetic one",
+    !isErr(capHover) && text(capHover).includes("(synthetic"),
+    text(capHover),
+  );
+  await A.call("browser_advanced_mode", { enable: false });
 
   // ── embedded-form routing (B08) ──────────────────────────────────────────
   // Everything here needs a REAL frame tree. A unit test can prove the worker
@@ -1112,6 +1149,185 @@ ${auditText.slice(0, 1500)}`,
       "settleMs caps the wait and reports the page as unsettled rather than lying",
       capped.settled === false && capped.elapsedMs < 1500,
       JSON.stringify(capped),
+    );
+  }
+
+  // ── a navigation that fails says so (plan 14, F1) ────────────────────────
+  // Chrome's error page loads like any page, so this used to answer ok/settled.
+  // Port 1 on loopback refuses at once: no network, well under a second.
+  {
+    const down = await A.call("browser_navigate", {
+      url: "http://127.0.0.1:1/",
+      includeSnapshot: false,
+    });
+    assert(
+      "a refused connection is reported as NAVIGATION_FAILED",
+      isErr(down) && text(down).startsWith("NAVIGATION_FAILED"),
+      text(down).slice(0, 300),
+    );
+    assert("naming Chrome's own error", text(down).includes("ERR_"), text(down).slice(0, 300));
+    const onErrorPage = await A.call("browser_snapshot", {});
+    assert(
+      "a tool used on the error page names the error page, not chrome://",
+      isErr(onErrorPage) && text(onErrorPage).includes("Chrome error page"),
+      text(onErrorPage).slice(0, 300),
+    );
+    const fine = await A.call("browser_navigate", { url: base + "/", includeSnapshot: false });
+    assert(
+      "and an ordinary navigate afterwards is unchanged",
+      !isErr(fine) && text(fine).startsWith("Navigated to"),
+      text(fine).slice(0, 200),
+    );
+  }
+
+  // ── a click that leaves the page is a navigation (plan 14, F4) ───────────
+  // Chrome never answers an injection whose document unloads mid-wait, so this
+  // click used to hang to the 8 s socket deadline and then blame a dialog.
+  {
+    env.page = base + "/click-nav.html";
+    await A.call("browser_navigate", { url: env.page, includeSnapshot: false });
+    const go = refFor(text(await A.call("browser_snapshot", {})), "Go to page two");
+    const startedAt = Date.now();
+    const clicked = await A.call("browser_click", {
+      ref: go,
+      element: "Go to page two",
+      includeSnapshot: false,
+    });
+    const tookMs = Date.now() - startedAt;
+    assert(
+      "a link click that navigates succeeds instead of timing out",
+      !isErr(clicked),
+      text(clicked).slice(0, 300),
+    );
+    assert(
+      "and reports the navigation, to the new address",
+      action(clicked).navigated === true && String(action(clicked).urlAfter).includes("page=2"),
+      JSON.stringify(action(clicked)),
+    );
+    assert("well inside the socket deadline", tookMs < 5000, `${tookMs}ms`);
+
+    // And when the call DOES run out of time mid-load — here a 300 ms limit
+    // against a page that takes 1.5 s — the timeout names the load, not a dialog.
+    await A.call("browser_navigate", { url: env.page, includeSnapshot: false });
+    const slow = refFor(text(await A.call("browser_snapshot", {})), "Go to a slow page");
+    const cut = await A.call("browser_click", {
+      ref: slow,
+      element: "Go to a slow page",
+      timeout: 300,
+    });
+    assert(
+      "a timeout during a load names the load, not a dialog",
+      isErr(cut) &&
+        text(cut).includes("stage10-navigation.html") &&
+        !text(cut).includes("alert/confirm/prompt"),
+      text(cut).slice(0, 400),
+    );
+    await sleep(2000); // let the slow page finish before the next scenario navigates
+  }
+
+  // F5: a page that acts only on a trusted click ignores the default synthetic
+  // one. The reply used to say "Clicked" and nothing else.
+  {
+    await A.call("browser_navigate", { url: base + "/click-nav.html", includeSnapshot: false });
+    const ref = refFor(text(await A.call("browser_snapshot", {})), "Only a real click works");
+    const ignored = await A.call("browser_click", {
+      ref,
+      element: "Only a real click works",
+      includeSnapshot: false,
+    });
+    assert(
+      "a click the page ignored says no change was seen",
+      !isErr(ignored) && text(ignored).includes("No change seen on the page"),
+      text(ignored).slice(0, 300),
+    );
+  }
+
+  // F10: text is matched against a whole subtree, so html, body and the <p>
+  // around a link all "contain" its text. They came first and filled `max`.
+  {
+    await A.call("browser_navigate", { url: base + "/click-nav.html", includeSnapshot: false });
+    const found = text(await A.call("browser_find", { text: "Go to page two", max: 2 }));
+    assert(
+      "find by text returns the link itself, not the elements around it",
+      /^- link "Go to page two" \[ref=[^\]]+\] <a href="click-nav\.html\?page=2" id="go">$/.test(
+        found,
+      ),
+      found,
+    );
+
+    // F11: a <meta> lives in <head>, never drawn, so even an explicit selector
+    // could not reach it; and a date kept in an attribute came back blank.
+    const meta = text(await A.call("browser_find", { selector: "meta[name=user-login]" }));
+    assert(
+      "find by selector reaches a <meta> in <head> and shows its content",
+      meta.includes('<meta content="octocat">') && meta.includes("(hidden)"),
+      meta,
+    );
+    const when = text(await A.call("browser_find", { text: "2 days ago" }));
+    assert(
+      "find shows the datetime a <relative-time> keeps in its attribute",
+      when.includes('datetime="2026-10-01T12:00:00Z"'),
+      when,
+    );
+
+    // F12: an icon-only button printed as a bare `- button`, so two of them
+    // could not be told apart.
+    const snap = text(await A.call("browser_snapshot", {}));
+    assert(
+      "the snapshot names icon-only buttons by #id and by their image's alt",
+      snap.includes('button "#buttonGenerate" [ref=') && snap.includes('button "Settings" [ref='),
+      snap,
+    );
+    const cog = text(await A.call("browser_find", { text: "Settings" }));
+    assert(
+      "find by text reaches an icon-only button through its image's alt",
+      /^- button "Settings" \[ref=[^\]]+\] <button id="cog">$/.test(cog),
+      cog,
+    );
+  }
+
+  // F13: "Result:" matched the placeholder at once (T12), there was no way to
+  // wait for text to go, and eval gave up at 8 s whatever the page was doing.
+  {
+    const page = base + "/click-nav.html";
+    const read = async (expr) => text(await A.call("browser_eval", { expression: expr }));
+    await A.call("browser_navigate", { url: page, includeSnapshot: false });
+    await A.call("browser_wait_for", { text: "Loading...", state: "detached", timeoutMs: 3000 });
+    const loading = await read("!!document.getElementById('loading')");
+    assert(
+      "wait_for text with state detached waits until the text is gone",
+      loading === "false",
+      loading,
+    );
+
+    await A.call("browser_navigate", { url: page, includeSnapshot: false });
+    const waited = await A.call("browser_wait_for", { text: "/Result: \\d+/", timeoutMs: 3000 });
+    const result = await read("document.getElementById('result').textContent");
+    assert(
+      "wait_for text as /regex/ skips the placeholder it shares a prefix with",
+      !isErr(waited) && result === "Result: 42",
+      `${text(waited).slice(0, 200)} | ${result}`,
+    );
+
+    const slow = await A.call("browser_eval", {
+      expression: "new Promise((r) => setTimeout(() => r('slow done'), 9000))",
+      timeout: 15000,
+    });
+    assert(
+      "eval with a timeout outlives the 8 s default",
+      !isErr(slow) && text(slow).includes("slow done"),
+      text(slow).slice(0, 300),
+    );
+  }
+
+  // F14: the default snapshot was taken on the load event, before a page that
+  // draws by script (YouTube, T35) had drawn anything.
+  {
+    const snap = text(await A.call("browser_navigate", { url: base + "/click-nav.html?f14" }));
+    assert(
+      "navigate's default snapshot waits for content drawn just after load",
+      snap.includes('button "Drawn after load"'),
+      snap.slice(0, 600),
     );
   }
 

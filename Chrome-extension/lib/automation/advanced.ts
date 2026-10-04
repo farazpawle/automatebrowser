@@ -25,6 +25,7 @@ export async function setAdvancedMode(
     await cdp.detach(tabId);
   } else if (args.enable === true) {
     await cdp.attach(tabId);
+    cdp.markTrustedInput(tabId);
   }
   // enable === undefined → status query (no change)
 
@@ -35,7 +36,9 @@ export async function setAdvancedMode(
   // that do work: launch with --ignore-certificate-errors, or click through the
   // warning once.
   return {
-    enabled: cdp.isAttached(tabId),
+    // The mode, not the session: a capture's leftover attach is listed in
+    // `attachedTabs` but sends no real input, so it must not read as "ON".
+    enabled: cdp.wantsTrustedInput(tabId),
     attachedTabs: cdp.attachedTabs(),
     tabId,
   };
@@ -466,8 +469,24 @@ function nextLoadComplete(tabId: number, timeoutMs: number): Promise<boolean> {
   });
 }
 
+/**
+ * Tabs a trace attached the debugger to, so stopping can put it back (F7). A
+ * left-over attach kept the banner up and, before trusted input had its own
+ * flag, turned every later click into a real one.
+ *
+ * ponytail: a `keepEnabled` capture made mid-trace is detached with it; give
+ * captures their own owner record if that is ever seen.
+ */
+const traceAttached = new Set<number>();
+
 async function stopTrace(tabId: number): Promise<TraceResult> {
-  const events = await cdp.traceStop(tabId);
+  let events: unknown[];
+  try {
+    events = await cdp.traceStop(tabId);
+  } finally {
+    // Advanced mode turned on during the trace keeps the session it asked for.
+    if (traceAttached.delete(tabId) && !cdp.wantsTrustedInput(tabId)) await cdp.detach(tabId);
+  }
   // Compute a coarse duration from event timestamps (microseconds → ms).
   let min = Infinity;
   let max = -Infinity;
@@ -577,8 +596,32 @@ export async function perfTrace(
   if (args.action === "memory") return memoryTrend(tabId, args.durationMs ?? 5_000);
   if (args.action !== "start") return stopTrace(tabId);
 
-  if (!cdp.isAttached(tabId)) await cdp.attach(tabId);
-  await cdp.traceStart(tabId, args.categories);
+  // A load recorded in a tab Chrome is not drawing has no LCP — Chrome does not
+  // report it for a page loaded in the background — so refuse before attaching
+  // or reloading anything (F9). A manual start with no load is left alone: its
+  // long tasks need no paint. Asked without the debugger, so no banner flashes.
+  if (
+    (args.reload || args.autoStop) &&
+    (await runFunc(tabId, () => document.visibilityState, [])) !== "visible"
+  ) {
+    throw new Error(
+      "TAB_HIDDEN: Chrome is not drawing this tab (the window is minimised, or this is a " +
+        "background tab), and it reports no LCP for a page loaded unseen — the trace would " +
+        "record and measure nothing. browser_switch_tab to this tab (it restores a minimised " +
+        "window), then record again; that takes the user's screen, so ask first.",
+    );
+  }
+
+  if (!cdp.isAttached(tabId)) {
+    await cdp.attach(tabId);
+    traceAttached.add(tabId);
+  }
+  try {
+    await cdp.traceStart(tabId, args.categories);
+  } catch (e) {
+    if (traceAttached.delete(tabId)) await cdp.detach(tabId);
+    throw e;
+  }
   if (!args.reload && !args.autoStop) return { started: true };
 
   // Arm first, reload second — see nextLoadComplete.
@@ -647,7 +690,7 @@ async function requireComposited(tabId: number, what: string): Promise<void> {
   });
   if (r?.result?.value === "visible") return;
   throw new Error(
-    `Cannot send trusted ${what}: Chrome is not drawing this tab (the window is minimised, ` +
+    `TAB_HIDDEN: Cannot send trusted ${what}: Chrome is not drawing this tab (the window is minimised, ` +
       `or this is a background tab) and DISCARDS real input aimed at it — the call would ` +
       `report success and do nothing. Restore the browser window (or browser_switch_tab to ` +
       `this tab), or turn browser_advanced_mode off to use the synthetic ${what}, which ` +
@@ -780,6 +823,40 @@ export async function nativeClick(
 }
 
 /**
+ * A real mouse move onto the element (F6). The synthetic hover reaches page
+ * scripts but never moves the browser's hover state, so CSS `:hover` does not
+ * apply; only real input does. Refused on a hidden tab for the click's reason:
+ * Chrome discards the move and reports success.
+ */
+export async function nativeHover(
+  tabId: number,
+  args: { ref: string },
+): Promise<{ ok: true; trusted: true }> {
+  cdp.requireAttached(tabId);
+  await requireComposited(tabId, "hover");
+  const { bare } = driver.parseRef(args.ref);
+  const rect = await cdp.sendCommand<any>(tabId, "Runtime.evaluate", {
+    expression: `(${REF_CENTRE})(${JSON.stringify(bare)})`,
+    returnByValue: true,
+  });
+  const pt = rect?.result?.value;
+  if (!pt) throw unreachableRef(args.ref, "a trusted browser_hover");
+  await moveMouse(tabId, pt.x, pt.y);
+  return { ok: true, trusted: true };
+}
+
+/** A real pointer move with no button held — what sets the browser's hover state. */
+async function moveMouse(tabId: number, x: number, y: number): Promise<void> {
+  await cdp.sendCommand(tabId, "Input.dispatchMouseEvent", {
+    type: "mouseMoved",
+    x,
+    y,
+    button: "none",
+    buttons: 0,
+  });
+}
+
+/**
  * One trusted click (or two, for a double) at a viewport point.
  *
  * `buttons` is NOT optional in practice. It is the bitmask of buttons held DURING
@@ -798,13 +875,7 @@ async function dispatchClick(
   y: number,
   dbl: boolean,
 ): Promise<void> {
-  await cdp.sendCommand(tabId, "Input.dispatchMouseEvent", {
-    type: "mouseMoved",
-    x,
-    y,
-    button: "none",
-    buttons: 0,
-  });
+  await moveMouse(tabId, x, y);
   for (let i = 1; i <= (dbl ? 2 : 1); i++) {
     const common = { x, y, button: "left", clickCount: i };
     await cdp.sendCommand(tabId, "Input.dispatchMouseEvent", {

@@ -104,8 +104,9 @@ const SECTIONS = [
   {
     title: "Performance",
     prose:
-      "`browser_perf_trace` measures THIS machine on THIS run and needs `browser_advanced_mode` — " +
-      'except `action: "memory"`, which samples the JS heap with no debugger and no banner. ' +
+      "`browser_perf_trace` measures THIS machine on THIS run. Recording attaches the debugger itself " +
+      "(banner) and detaches it on stop unless advanced mode was already on; " +
+      '`action: "memory"` samples the JS heap with no debugger and no banner. ' +
       "`browser_perf_field_data` needs no browser at all - it reads Google's Chrome UX Report for what " +
       "real visitors experienced, and sends the URL you ask about to that public API.",
     tools: ["browser_perf_field_data"],
@@ -138,7 +139,8 @@ const SECTIONS = [
     title: "Advanced (opt-in CDP)",
     prose:
       "Attach the Chrome debugger only when you need full-fidelity input or network bodies. Enable with\n" +
-      "`browser_advanced_mode` first; a debugging banner shows only while it's attached.",
+      "`browser_advanced_mode` first (a perf trace attaches by itself); a debugging banner shows only\n" +
+      "while it's attached.",
     tools: [
       "browser_advanced_mode",
       "browser_upload_file",

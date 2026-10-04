@@ -49,7 +49,11 @@ function loadDriver(result: unknown = { ok: true }) {
       chrome: {
         // `settleAfterAction` and `currentUrl` ask for the tab; a settled,
         // never-navigating tab keeps every case about refs and nothing else.
-        tabs: { get: async () => ({ url: "https://example.test/", status: "complete" }) },
+        tabs: {
+          get: async () => ({ url: "https://example.test/", status: "complete" }),
+          // Every ref op watches for the tab starting a new load (F4).
+          onUpdated: { addListener: () => {}, removeListener: () => {} },
+        },
       },
     },
     mocks: {

@@ -256,9 +256,10 @@ export const getConsoleLogs: Tool = {
     const p = paginate(entries, page, CONSOLE_PAGE_SIZE);
     return {
       content: [{ type: "text", text: renderConsole(p) }],
-      // Page fields only — never the entries. This tool has no `outputSchema`,
-      // and repeating a 50-entry log as structured data would double the cost of
-      // the most verbose result the server produces.
+      // Page fields only — never the entries: repeating a 50-entry log as data
+      // would double the most verbose result the server produces. Withheld from
+      // agents by default (`wireResult`): Claude Code showed these four fields
+      // INSTEAD of the log above (benchmark T23).
       structuredContent: {
         page: p.page,
         totalPages: p.totalPages,

@@ -18,6 +18,7 @@
 
 import { getPreserved } from "../preserved-logs";
 import { waitMultiplier } from "./emulate";
+import { requestSince } from "./network";
 import { runFunc, runFuncAllFrames, unwrap } from "./run-func";
 
 // ── snapshot ────────────────────────────────────────────────────────────────
@@ -152,6 +153,17 @@ function snapshotPage(verbose: boolean): { url: string; title: string; snapshot:
     if (tag === "img") return clip((el as HTMLImageElement).alt || "");
     return clip((he.innerText || he.textContent || "") as string);
   };
+  // An icon-only control (`<button><i class="fa fa-cog"></i></button>`) has no
+  // text, and a bare `- button` cannot be told from its neighbours (F12). Used
+  // for controls only, never in `sigOf`: refs must not move with this.
+  const fallbackName = (el: Element): string => {
+    const title = el.getAttribute("title");
+    if (title) return clip(title);
+    const alt = el.querySelector("img[alt]")?.getAttribute("alt");
+    if (alt) return clip(alt);
+    const id = el.getAttribute("id");
+    return id ? clip("#" + id) : "";
+  };
 
   const roleOf = (el: Element): string => {
     const explicit = el.getAttribute("role");
@@ -245,7 +257,7 @@ function snapshotPage(verbose: boolean): { url: string; title: string; snapshot:
       const ref = refFor(el);
       el.setAttribute(REF_ATTR, ref);
       const role = roleOf(el) || tag;
-      const name = accName(el);
+      const name = accName(el) || fallbackName(el);
       const extra =
         tag === "input" && (el as HTMLInputElement).value && role === "textbox"
           ? ` value="${clip((el as HTMLInputElement).value)}"`
@@ -328,6 +340,44 @@ function snapshotPage(verbose: boolean): { url: string; title: string; snapshot:
     title: document.title,
     snapshot: lines.join("\n") || "(no visible interactive elements found)",
   };
+}
+
+// ── page quiet (F14) ────────────────────────────────────────────────────────
+
+/**
+ * Whether the page has stopped changing: true after `quietMs` with no DOM
+ * mutation, false at `capMs`. The load event fires before a script-rendered
+ * page (YouTube) has drawn anything, so a snapshot taken on it reads a shell.
+ * Its own copy of refOpPage's post-action settle - an injected function cannot
+ * call shared code.
+ */
+export function domQuietPage(quietMs: number, capMs: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    let quiet: ReturnType<typeof setTimeout> | undefined;
+    let obs: MutationObserver | null = null;
+    const done = (v: boolean) => {
+      obs?.disconnect();
+      clearTimeout(quiet);
+      clearTimeout(hard);
+      resolve(v);
+    };
+    const hard = setTimeout(() => done(false), capMs);
+    try {
+      obs = new MutationObserver(() => {
+        clearTimeout(quiet);
+        quiet = setTimeout(() => done(true), quietMs);
+      });
+      obs.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        characterData: true,
+      });
+    } catch {
+      return done(true); // no observer → nothing to wait for
+    }
+    quiet = setTimeout(() => done(true), quietMs);
+  });
 }
 
 // ── frames (B5) ─────────────────────────────────────────────────────────────
@@ -752,6 +802,8 @@ async function refOpPage(
   failed?: string;
   /** Whether the DOM went quiet before returning (false = it never stopped). */
   domSettled?: boolean;
+  /** Click only: whether the page reacted at all (F5). Absent = not measured. */
+  mutated?: boolean;
 }> {
   const REF_ATTR = "data-bmcp-ref";
   const slow = Math.max(1, Math.min(o.slowdown ?? 1, 8));
@@ -918,6 +970,30 @@ async function refOpPage(
           `Element "${refs[0]}" is not actionable: failed the "${failed}" check after ${GATE_MS}ms.` +
           covering,
       };
+    }
+  }
+
+  // ── did the page react? (F5) ───────────────────────────────────────────────
+  // A synthetic click some pages ignore used to come back as "Clicked". Watched
+  // from BEFORE the dispatch: a synchronous handler's changes land during it,
+  // where an observer started afterwards (like the settle one below) never sees
+  // them. Click only — it is the op whose reply carries the note.
+  let changed = false;
+  let watch: MutationObserver | null = null;
+  const focusBefore = document.activeElement;
+  const toggle = (el as any).control ?? el; // a <label> flips its input, not itself
+  const checkedBefore = toggle.checked;
+  if (op === "click") {
+    try {
+      watch = new MutationObserver(() => {
+        changed = true;
+      });
+      // The element's own root too: a shadow tree or a frame is not in `document`.
+      for (const root of new Set<Node>([document.documentElement, el.getRootNode()])) {
+        watch.observe(root, { childList: true, subtree: true, attributes: true, characterData: true });
+      }
+    } catch {
+      watch = null; // no observer → report nothing rather than guess
     }
   }
 
@@ -1099,7 +1175,10 @@ async function refOpPage(
   // dispatched and the agent's next snapshot is of a page mid-re-render.
   // `settleAfterAction` in the worker still handles the NAVIGATION half; this is
   // in-page and costs no extra round trip.
-  if (o.actionability === false) return { ok: true };
+  if (o.actionability === false) {
+    watch?.disconnect(); // no settle wait, so a later reaction would be missed: say nothing
+    return { ok: true };
+  }
   const domSettled = await new Promise<boolean>((resolve) => {
     let quiet: any;
     let hard: any;
@@ -1131,7 +1210,18 @@ async function refOpPage(
     quiet = setTimeout(() => done(true), QUIET_MS);
     hard = setTimeout(() => done(false), SETTLE_CAP_MS);
   });
-  return { ok: true, domSettled };
+  if (!watch) return { ok: true, domSettled };
+  // Not DOM changes, and each one a click that worked: a checkbox flipping, and
+  // focus moving somewhere other than the button we focused ourselves.
+  const focus = document.activeElement;
+  const field = /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable;
+  const mutated =
+    changed ||
+    watch.takeRecords().length > 0 ||
+    toggle.checked !== checkedBefore ||
+    (focus !== focusBefore && (focus !== el || field));
+  watch.disconnect();
+  return { ok: true, domSettled, mutated };
 }
 
 function pressKeyPage(combo: string): Envelope {
@@ -1214,7 +1304,36 @@ type OpEnvelope = {
   code?: string;
   failed?: string;
   domSettled?: boolean;
+  mutated?: boolean;
 };
+
+/**
+ * Inject the ref op, but stop waiting once the tab starts loading a new document
+ * (F4). Chrome never settles `executeScript` for a document that unloads while
+ * the injected promise is pending — measured 2026-10-02: still pending after
+ * 10 s — and the op's in-page DOM settle is exactly such a promise. So a click
+ * that followed a link held the call to the socket deadline, and the server then
+ * blamed a dialog. The load means the action landed; `settleAfterAction` reports
+ * the navigation.
+ */
+async function injectRefOp(
+  tabId: number,
+  args: Parameters<typeof refOpPage>,
+  frameId: number,
+): Promise<OpEnvelope> {
+  let onUpdated!: (id: number, info: chrome.tabs.OnUpdatedInfo) => void;
+  const unloaded = new Promise<OpEnvelope>((resolve) => {
+    onUpdated = (id, info) => {
+      if (id === tabId && info.status === "loading") resolve({ ok: true });
+    };
+    chrome.tabs.onUpdated.addListener(onUpdated);
+  });
+  try {
+    return await Promise.race([runFunc(tabId, refOpPage, args, "ISOLATED", frameId), unloaded]);
+  } finally {
+    chrome.tabs.onUpdated.removeListener(onUpdated);
+  }
+}
 
 /**
  * Run one interaction, recovering ONCE from a ref that has gone stale (B2).
@@ -1243,7 +1362,7 @@ async function runRefOp(
   // A `fN:` prefix routes the whole op into that frame (B5). The injected op is
   // unchanged and sees plain refs — frame identity never leaves the worker.
   const { frameId, bare } = frameOf(refs);
-  let r = (await runFunc(tabId, refOpPage, [op, bare, opts], "ISOLATED", frameId)) as OpEnvelope;
+  let r = await injectRefOp(tabId, [op, bare, opts], frameId);
   if (r.ok || r.code !== "REF_NOT_FOUND") return r;
 
   // Re-tag and try once more. A second attempt could not find anything the first
@@ -1257,7 +1376,7 @@ async function runRefOp(
     // report the original miss.
     return r;
   }
-  r = (await runFunc(tabId, refOpPage, [op, bare, opts], "ISOLATED", frameId)) as OpEnvelope;
+  r = await injectRefOp(tabId, [op, bare, opts], frameId);
   if (r.ok) return { ...r, recovered: true };
   if (r.code === "REF_NOT_FOUND") {
     throw new Error(
@@ -1396,8 +1515,9 @@ export async function click(
   tabId: number,
   args: { ref?: string; x?: number; y?: number; dblClick?: boolean } & SettleOptions & RefOpArgs,
 ): Promise<
-  ActionResult & { recovered?: boolean; domSettled?: boolean; hit?: string }
+  ActionResult & { recovered?: boolean; domSettled?: boolean; mutated?: boolean; hit?: string }
 > {
+  const startedAt = Date.now();
   const urlBefore = await currentUrl(tabId);
   // A2: a point needs no ref to resolve, so there is nothing that can go stale
   // and nothing to recover — the coordinate IS the address.
@@ -1414,7 +1534,11 @@ export async function click(
   }
   const r = await runRefOp(tabId, "click", [args.ref!], args);
   unwrapOp(r);
-  return { ...(await settleAfterAction(tabId, urlBefore, args)), recovered: r.recovered, domSettled: r.domSettled };
+  const settled = await settleAfterAction(tabId, urlBefore, args);
+  // F5: a click that only sent a request (or opened a tab) changed nothing in the
+  // DOM yet and still worked. Asked after the settle, which gave it time to go out.
+  const mutated = r.mutated === false ? await requestSince(tabId, startedAt) : r.mutated;
+  return { ...settled, recovered: r.recovered, domSettled: r.domSettled, mutated };
 }
 
 export async function hover(

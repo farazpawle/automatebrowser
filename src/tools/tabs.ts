@@ -3,6 +3,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { Context } from "@/context";
 
+import { assertSafeUrl } from "./common";
 import type { Tool } from "./tool";
 
 export const TabRef = z
@@ -172,6 +173,9 @@ export const newTab: Tool = {
   },
   handle: async (context, params) => {
     const { url, active, incognito } = NewTabArgs.parse(params);
+    // The same schemes browser_navigate refuses: T37 opened chrome://settings here
+    // and every later call on the tab failed (plan 14, F3).
+    if (url) assertSafeUrl(url);
     // Creating a tab is not tab-exclusive — skip the claim gate, then adopt the
     // new tab as this controller's target so subsequent drives ride it.
     const result = (await context.sendSocketMessage(
@@ -222,14 +226,26 @@ export const switchTab: Tool = {
     // this controller drives it next. noClaim — the claim lands on the first drive.
     const result = (await context.sendSocketMessage("browser_switch_tab", args, {
       noClaim: true,
-    })) as { tabId?: number } | undefined;
+    })) as { tabId?: number; visibilityState?: string } | undefined;
     const tabId = typeof result?.tabId === "number" ? result.tabId : args.tabId;
     if (typeof tabId === "number") context.setActiveTab(tabId);
+    // What the page itself reports after the window was restored and focused.
+    // Absent (older extension, settings page) means unknown, so claim nothing.
+    const seen = result?.visibilityState;
+    const visibility =
+      seen === "visible"
+        ? " — the page is visible"
+        : seen
+          ? " — but the page is still hidden (the window may be covered or on another " +
+            "desktop); steps that need a drawn page, like a real click or a trace, will refuse"
+          : "";
     return {
       content: [
         {
           type: "text",
-          text: `Switched to tab ${args.tabId !== undefined ? `tabId=${args.tabId}` : `index=${args.index}`}`,
+          text:
+            `Switched to tab ${args.tabId !== undefined ? `tabId=${args.tabId}` : `index=${args.index}`}` +
+            visibility,
         },
       ],
     };

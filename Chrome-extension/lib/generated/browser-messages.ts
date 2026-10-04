@@ -221,6 +221,7 @@ export interface BrowserCommandMap {
   };
   browser_eval: {
     function?: string | undefined;
+    timeout?: number | undefined;
     expression?: string | undefined;
     args?: string[] | undefined;
     filePath?: string | undefined;

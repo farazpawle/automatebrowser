@@ -187,6 +187,52 @@ function lastGenerations(entries: NetEntry[], generations: number): NetEntry[] {
   return entries.filter((e) => e.start >= from);
 }
 
+/**
+ * The newest top-level (`main_frame`) request a tab made at or after `sinceTs`.
+ *
+ * F1: Chrome's error page commits like any other document, so the tab events
+ * alone cannot tell "loaded" from "failed to load". The top-level request can —
+ * its `error` is set by `onErrorOccurred` and nothing else. The error's TEXT is
+ * passed through for the reader and never inspected: Chrome documents it as
+ * unstable across releases.
+ */
+export async function lastMainFrame(tabId: number, sinceTs: number): Promise<NetEntry | undefined> {
+  if (!chrome.webRequest) return undefined;
+  await ready();
+  for (let i = buf.length - 1; i >= 0; i--) {
+    const e = buf[i]!;
+    if (e.tabId === tabId && e.type === "main_frame" && e.start >= sinceTs) return e;
+  }
+  return undefined;
+}
+
+/**
+ * Whether the tab sent any request at or after `sinceTs`, or any tab began a
+ * top-level load (a link that opened a new tab).
+ *
+ * F5: a click that only sends a request, or opens a tab, changes nothing in its
+ * own page and still worked — it must not be reported as ignored.
+ */
+export async function requestSince(tabId: number, sinceTs: number): Promise<boolean> {
+  if (!chrome.webRequest) return false;
+  await ready();
+  return buf.some((e) => e.start >= sinceTs && (e.tabId === tabId || e.type === "main_frame"));
+}
+
+/**
+ * How many requests the tab started at or after `sinceTs` are still open (F14,
+ * `waitUntil: "networkidle"`). A redirect re-announces its request id, leaving
+ * the first entry without an end forever, so only the entry `byId` points at
+ * counts.
+ */
+export async function inFlight(tabId: number, sinceTs: number): Promise<number> {
+  if (!chrome.webRequest) return 0;
+  await ready();
+  return buf.filter(
+    (e) => e.tabId === tabId && e.start >= sinceTs && e.end === undefined && byId.get(e.id) === e,
+  ).length;
+}
+
 export async function getNetworkRequests(
   tabId: number,
   args: { limit?: number; resourceTypes?: string[]; includePreserved?: boolean },

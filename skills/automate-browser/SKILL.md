@@ -69,36 +69,36 @@ third-party cookies, CORS — none of which produce a console error.
 
 Open the reference you need, at the lines you need. Do not read a whole file to answer one question.
 
-<details><summary>references/tabs-and-multi-agent.md (156 lines) — which tab am I allowed to drive?</summary>
+<details><summary>references/tabs-and-multi-agent.md (161 lines) — which tab am I allowed to drive?</summary>
 
 | Section | Lines |
 |---|---|
 | The one rule | 17-31 |
 | Getting a tab — `new` vs `select` vs `switch` | 32-48 |
 | A logged-out tab, and the setting it needs | 49-73 |
-| Focus: who may take it | 74-83 |
-| Finishing: what gets cleaned up | 84-109 |
-| Two agents, one browser — claims, `TAB_CLAIMED`, `LEASE_LOST` | 110-131 |
-| Several browsers | 132-147 |
-| Being a good neighbour | 148-156 |
+| Focus: who may take it | 74-88 |
+| Finishing: what gets cleaned up | 89-114 |
+| Two agents, one browser — claims, `TAB_CLAIMED`, `LEASE_LOST` | 115-136 |
+| Several browsers | 137-152 |
+| Being a good neighbour | 153-161 |
 
 </details>
 
-<details><summary>references/page-interaction.md (237 lines) — clicking, typing, waiting</summary>
+<details><summary>references/page-interaction.md (260 lines) — clicking, typing, waiting</summary>
 
 | Section | Lines |
 |---|---|
 | Refs, not selectors | 18-30 |
-| Finding an element cheaply | 31-50 |
-| The interaction tools | 51-63 |
-| Filling a form in one call | 64-107 |
-| Clicking what a snapshot cannot name | 108-120 |
-| Waiting for the page to catch up | 121-136 |
-| The defaults includeSnapshot / waitUntil / settleMs already have | 137-152 |
-| Reading a navigation's settled | 153-172 |
-| When a navigation did not happen at all | 173-189 |
-| Actionability: why a click refuses | 190-211 |
-| When a ref goes stale | 212-237 |
+| Finding an element cheaply | 31-57 |
+| The interaction tools | 58-76 |
+| Filling a form in one call | 77-120 |
+| Clicking what a snapshot cannot name | 121-133 |
+| Waiting for the page to catch up | 134-151 |
+| The defaults includeSnapshot / waitUntil / settleMs already have | 152-173 |
+| Reading a navigation's settled | 174-195 |
+| When a navigation did not happen at all | 196-212 |
+| Actionability: why a click refuses | 213-234 |
+| When a ref goes stale | 235-260 |
 
 </details>
 
@@ -132,7 +132,7 @@ Open the reference you need, at the lines you need. Do not read a whole file to 
 
 </details>
 
-<details><summary>references/capture-and-diagnostics.md (486 lines) — screenshots, logs, network, speed, recipes</summary>
+<details><summary>references/capture-and-diagnostics.md (493 lines) — screenshots, logs, network, speed, recipes</summary>
 
 | Section | Lines |
 |---|---|
@@ -144,36 +144,36 @@ Open the reference you need, at the lines you need. Do not read a whole file to 
 | Accessibility: a floor, not a pass | 177-205 |
 | Network — incl. paging | 206-217 |
 | The footers on every action | 218-237 |
-| Performance — incl. the LCP breakdown and render-blocking list | 238-264 |
-| Memory: is this page leaking? | 265-302 |
-| Emulation | 303-311 |
-| Advanced mode, and what it costs — incl. why there is NO certificate bypass | 312-369 |
-| **Recipe** — "this page is slow", cheapest evidence first | 370-438 |
-| **Recipe** — auditing a page for accessibility | 439-486 |
+| Performance — incl. the LCP breakdown and render-blocking list | 238-266 |
+| Memory: is this page leaking? | 267-304 |
+| Emulation | 305-313 |
+| Advanced mode, and what it costs — incl. why there is NO certificate bypass | 314-376 |
+| **Recipe** — "this page is slow", cheapest evidence first | 377-445 |
+| **Recipe** — auditing a page for accessibility | 446-493 |
 
 </details>
 
-<details><summary>references/troubleshooting.md (136 lines) — when it will not drive the browser</summary>
+<details><summary>references/troubleshooting.md (140 lines) — when it will not drive the browser</summary>
 
 | Section | Lines |
 |---|---|
 | Always start here — `browser_status` | 17-28 |
 | The `link:` line — whether it is coming back | 29-45 |
 | "No connection to browser extension" | 46-77 |
-| A call that hangs, then times out | 78-83 |
-| An action reports success but nothing happened | 84-93 |
-| It acted on the wrong tab | 94-105 |
-| The error codes | 106-126 |
-| Three things that are not faults | 127-136 |
+| A call that hangs, then times out | 78-85 |
+| An action reports success but nothing happened | 86-95 |
+| It acted on the wrong tab | 96-107 |
+| The error codes | 108-130 |
+| Three things that are not faults | 131-140 |
 
 </details>
 
-<details><summary>references/tool-reference.md (236 lines) — all 46 tools, arguments and gotchas</summary>
+<details><summary>references/tool-reference.md (237 lines) — all 46 tools, arguments and gotchas</summary>
 
 | Section | Lines |
 |---|---|
-| The tools — generated from the live schemas, grouped | 18-126 |
-| Arguments and gotchas — hand-written, one row per tool | 127-236 |
+| The tools — generated from the live schemas, grouped | 18-127 |
+| Arguments and gotchas — hand-written, one row per tool | 128-237 |
 
 The tables are regenerated by `npm run docs:generate` and the build fails if a tool exists with no
 entry, so this list cannot fall behind the server.

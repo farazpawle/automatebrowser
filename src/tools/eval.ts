@@ -3,6 +3,7 @@ import { writeFileSync } from "node:fs";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { callTimeout, timeoutArg } from "./args";
 import type { Tool } from "./tool";
 
 export const EvalArgs = z
@@ -24,6 +25,7 @@ export const EvalArgs = z
       .enum(["accept", "dismiss"])
       .optional()
       .describe("Answer a dialog raised by this code instead of hanging on it."),
+    ...timeoutArg,
   })
   // Argument validation lives HERE, not in the extension: it costs no round trip,
   // no browser, and it is the same check whichever entry point called. Refinements
@@ -70,7 +72,9 @@ export const evaluate: Tool = {
   },
   handle: async (context, params) => {
     const args = EvalArgs.parse(params ?? {});
-    const result = await context.sendSocketMessage("browser_eval", args);
+    const result = await context.sendSocketMessage("browser_eval", args, {
+      timeoutMs: callTimeout(params),
+    });
     const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
     const rendered = text === undefined ? "undefined" : text;
 

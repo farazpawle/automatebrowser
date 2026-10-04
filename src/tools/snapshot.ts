@@ -99,6 +99,19 @@ function recoveryNote(result: Record<string, unknown> | undefined): string {
 }
 
 /**
+ * A synthetic click the page showed no reaction to is REPORTED (F5): some pages
+ * only act on a real click, and "Clicked" alone sent the agent on believing it
+ * worked. A note, not an error — a click can work and change nothing visible.
+ * Only a ref click measures it; anything else leaves `mutated` unset.
+ */
+function ignoredNote(result: Record<string, unknown> | undefined): string {
+  return result && result.mutated === false && !result.navigated
+    ? "\nNo change seen on the page. If the click should have done something, it may need a " +
+        "real click: browser_advanced_mode, with the tab visible."
+    : "";
+}
+
+/**
  * Interactions are LEAN by default — they return a short confirmation, not a
  * full page snapshot. The agent calls `browser_snapshot` only when it needs
  * fresh element refs, and can verify state cheaply via `browser_eval` /
@@ -211,9 +224,14 @@ export const click: Tool = {
         ? `"${validatedParams.element}"`
         : `(${validatedParams.x}, ${validatedParams.y})${hit ? ` — hit ${hit}` : ""}`;
     const how = validatedParams.dblClick ? "Double-clicked" : "Clicked";
-    return withOptionalSnapshot(context, params, `${how} ${what}${recoveryNote(result)}`, {
-      action: result,
-    });
+    return withOptionalSnapshot(
+      context,
+      params,
+      `${how} ${what}${recoveryNote(result)}${ignoredNote(result)}`,
+      {
+        action: result,
+      },
+    );
   },
 };
 
@@ -258,10 +276,16 @@ export const hover: Tool = {
   handle: async (context: Context, params) => {
     const validatedParams = HoverArgs.parse(params);
     const result = await sendAction(context, "browser_hover", validatedParams);
+    // F6: a synthetic hover reaches page scripts but never moves the browser's own
+    // hover state, so the reply must not let "Hovered" read as "the hover look shows".
+    const how = result.trusted
+      ? " (real mouse)"
+      : " (synthetic: page scripts saw the mouse; CSS :hover styles do not apply. For the " +
+        "hover look, use browser_advanced_mode with the tab visible.)";
     return withOptionalSnapshot(
       context,
       params,
-      `Hovered over "${validatedParams.element}"` + recoveryNote(result),
+      `Hovered over "${validatedParams.element}"${how}` + recoveryNote(result),
     );
   },
 };

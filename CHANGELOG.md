@@ -17,7 +17,14 @@ Dates are the date of the work, not of a release.
 
 ## [Unreleased]
 
-Nothing yet. `1.0.1` was published on 2026-09-21, and work after it lands here.
+`1.0.1` was published on 2026-09-21, and work after it lands here.
+
+### Added
+
+- **Release downloads.** Every GitHub release now carries two files: `automatebrowser-<version>.mcpb`
+  for a one-click Claude Desktop install, and `automate-browser-skill-<version>.zip`, the agent skill
+  for any agent's skills folder. `1.0.1` got them too. The browser extension is still a separate
+  install.
 
 ## [1.0.1] — 2026-09-21
 

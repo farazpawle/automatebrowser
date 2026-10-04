@@ -10,6 +10,26 @@
 export type World = "MAIN" | "ISOLATED";
 
 /**
+ * Why injection was refused, as the agent should read it. Chrome refuses an
+ * error page ("…is showing error page") with the same rejection as chrome://,
+ * and the chrome:// advice sent benchmark runs hunting for a settings page that
+ * was never there (F1). The match is on the extensions API's own wording — the
+ * only signal this rejection carries.
+ */
+function injectionRefused(e: any): Error {
+  const why = String(e?.message || e);
+  if (/showing error page/i.test(why)) {
+    return new Error(
+      `NAVIGATION_FAILED: This tab is showing a Chrome error page — its last page load failed, ` +
+        `so there is nothing on it to read or click. Navigate to a page that loads.`,
+    );
+  }
+  return new Error(
+    `RESTRICTED_PAGE: Cannot run on this page (${why}). It may be a restricted page (chrome://, the Web Store, a PDF) — open a normal http(s) page.`,
+  );
+}
+
+/**
  * Run a self-contained function in the page and return its single-frame result.
  *
  * `frameId` targets ONE frame — that is how a cross-origin iframe is driven (B5).
@@ -35,9 +55,7 @@ export async function runFunc<A extends any[], R>(
       world,
     });
   } catch (e: any) {
-    throw new Error(
-      `RESTRICTED_PAGE: Cannot run on this page (${e?.message || e}). It may be a restricted page (chrome://, the Web Store, a PDF) — open a normal http(s) page.`,
-    );
+    throw injectionRefused(e);
   }
   const top = frames?.[0];
   if (!top) throw new Error("Injection returned no result (restricted page?)");
@@ -73,9 +91,7 @@ export async function runFuncAllFrames<A extends any[], R>(
       world,
     });
   } catch (e: any) {
-    throw new Error(
-      `RESTRICTED_PAGE: Cannot run on this page (${e?.message || e}). It may be a restricted page (chrome://, the Web Store, a PDF) — open a normal http(s) page.`,
-    );
+    throw injectionRefused(e);
   }
   return (frames ?? [])
     .filter((f) => f && f.result != null)

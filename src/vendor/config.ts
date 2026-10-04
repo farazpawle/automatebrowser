@@ -79,3 +79,13 @@ export function snapshotEachAction(): boolean {
   const v = process.env.AUTOMATE_BROWSER_SNAPSHOT_EACH_ACTION;
   return v === "1" || v === "true" || v === "yes";
 }
+
+/**
+ * Opt-in: send each result's `structuredContent` (and list the output schemas).
+ * Off by default because Claude Code shows the structured half INSTEAD of the
+ * text when both arrive, which hides every written hint and footer (plan 14, F2).
+ */
+export function structuredReplies(): boolean {
+  const v = process.env.AUTOMATE_BROWSER_STRUCTURED;
+  return v === "1" || v === "true" || v === "yes";
+}
