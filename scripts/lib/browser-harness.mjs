@@ -327,6 +327,28 @@ export async function launchOwnBrowser(controller, { headed = false } = {}) {
     if (!serviceWorker) await sleep(300);
   }
 
+  // browser_eval runs through chrome.userScripts, which Chrome keeps off until a
+  // person turns on "Allow User Scripts". A fresh profile has it off, so flip it
+  // the way that page does. Probed on Chrome 152 (2026-10-05): the running worker
+  // gains the API at once, no reload, so the connection below is undisturbed.
+  if (serviceWorker) {
+    const page = await browser.newPage();
+    try {
+      const extensionId = new URL(serviceWorker.url()).host;
+      await page.goto("chrome://extensions/?id=" + extensionId);
+      await page.evaluate(
+        (id) =>
+          chrome.developerPrivate.updateExtensionConfiguration({
+            extensionId: id,
+            userScriptsAccess: true,
+          }),
+        extensionId,
+      );
+    } finally {
+      await page.close();
+    }
+  }
+
   // Two independent signals must agree — an id we had not seen AND a connection
   // made after we launched — so a roster hiccup cannot hand us the user's browser.
   let clientId = null;

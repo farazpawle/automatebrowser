@@ -60,6 +60,11 @@ export default defineConfig({
     // description and in every result. Like "debugger"/"downloads" it adds an
     // install/update permission warning, so Chrome DISABLES the extension until
     // the user re-approves it.
+    // "userScripts" backs browser_eval: the Web Store's MV3 policy allows code the
+    // extension did not ship ONLY through this API or the debugger, and names
+    // `eval` of a supplied string as a violation. Chrome also needs a person to
+    // turn on "Allow User Scripts" for the extension; until then browser_eval
+    // refuses with USER_SCRIPTS_DISABLED and nothing else is affected.
     permissions: [
       "scripting",
       "storage",
@@ -71,6 +76,7 @@ export default defineConfig({
       "downloads",
       "declarativeNetRequest",
       "proxy",
+      "userScripts",
     ],
     host_permissions: ["<all_urls>"],
     // No `externally_connectable`. It listed "https://*.automatebrowser.com/*"

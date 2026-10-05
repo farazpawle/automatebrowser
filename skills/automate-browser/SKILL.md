@@ -153,7 +153,7 @@ Open the reference you need, at the lines you need. Do not read a whole file to 
 
 </details>
 
-<details><summary>references/troubleshooting.md (140 lines) — when it will not drive the browser</summary>
+<details><summary>references/troubleshooting.md (141 lines) — when it will not drive the browser</summary>
 
 | Section | Lines |
 |---|---|
@@ -163,8 +163,8 @@ Open the reference you need, at the lines you need. Do not read a whole file to 
 | A call that hangs, then times out | 78-85 |
 | An action reports success but nothing happened | 86-95 |
 | It acted on the wrong tab | 96-107 |
-| The error codes | 108-130 |
-| Three things that are not faults | 131-140 |
+| The error codes | 108-131 |
+| Three things that are not faults | 132-141 |
 
 </details>
 

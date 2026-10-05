@@ -36,6 +36,9 @@ export const ERROR_CODES = [
   // A private-browsing window was asked for and the extension is not allowed in
   // one. Only a PERSON can change that, which is why it carries no recovery tool.
   "INCOGNITO_BLOCKED",
+  // browser_eval runs through chrome.userScripts, which Chrome keeps off until a
+  // person turns on "Allow User Scripts" for the extension. Same shape as above.
+  "USER_SCRIPTS_DISABLED",
   "CAPTURE_STALLED",
   // Chrome is not drawing the tab (minimised window, background tab), so real
   // input is discarded and a page load reports no LCP (F9). Not retryable: it

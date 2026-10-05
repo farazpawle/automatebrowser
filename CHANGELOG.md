@@ -47,6 +47,13 @@ should take this: with a freshly built extension, `1.0.0` will not connect at al
 
 ### Changed
 
+- **`browser_eval` needs Chrome's "Allow User Scripts" switch, once.** Your code now runs through
+  Chrome's user-scripts feature instead of `eval`: the Chrome Web Store allows an extension to run
+  code it did not ship only that way, and names `eval` of a supplied string as a violation. Turn it
+  on at `chrome://extensions` → **Details** on AutomateBrowser → **Allow User Scripts** (before
+  Chrome 138: **Developer mode**). Until then `browser_eval` refuses with the new code
+  `USER_SCRIPTS_DISABLED` and runs nothing; every other tool is unaffected. The extension gains the
+  `userScripts` permission, so Chrome asks you to re-approve it after updating.
 - **The extension has its own identity.** Its manifest carried a `key` pinning
   `bjfgambnhccakkhmkepdoekmckoijdlc` — a live Chrome Web Store listing owned by browsermcp.io, the
   project this was forked from, and its public key, not ours. It is gone. **An already side-loaded

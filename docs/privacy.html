@@ -130,6 +130,7 @@ a,code{overflow-wrap:anywhere}
       <tr><td>Downloads</td><td>To report where a downloaded file was saved. This is the only way a browser can tell you the final path.</td></tr>
       <tr><td>Request blocking</td><td>To enforce a site block list you have configured, at the network level rather than by trusting the tool to behave.</td></tr>
       <tr><td>Proxy</td><td>Only used if an assistant is explicitly asked to set one. <strong>A proxy applies to your whole browser profile</strong>, not one tab — it affects your own browsing too.</td></tr>
+      <tr><td>User scripts</td><td>To run a piece of JavaScript an assistant was asked to run on a page — the one tool that does this. Chrome keeps it switched off until you turn on "Allow User Scripts" for the extension yourself.</td></tr>
       <tr><td>Debugger</td><td>Off by default. A small number of advanced features need it, and turning it on shows the browser's own "started debugging" banner so you always know.</td></tr>
       <tr><td>Storage &amp; alarms</td><td>To remember a few local settings, and to reconnect after the browser puts the extension to sleep.</td></tr>
     </table>
@@ -150,22 +151,32 @@ a,code{overflow-wrap:anywhere}
     described above travels to that machine instead. Nothing enables this on your behalf.</p>
 
     <h2>What is stored, and where</h2>
-    <p>Three things, all kept in your browser's own local extension storage on your device. Nothing
-    is stored anywhere else:</p>
+    <p>Everything is kept in your browser's own extension storage on your device. Nothing is stored
+    anywhere else.</p>
+    <p>Settings, kept until you change them or remove the extension:</p>
     <ul>
       <li>An optional <strong>label</strong> you can set to tell one browser from another.</li>
       <li>An optional <strong>shared secret</strong>, if you have set one.</li>
       <li>An optional <strong>address of another machine</strong>, if you have set one.</li>
+      <li>A random <strong>id for this browser</strong>, so assistants can tell two browsers apart. It
+      identifies nothing about you.</li>
+      <li>The <strong>last connection port</strong> that worked, so reconnecting is quick.</li>
+      <li>Which <strong>tab</strong> you or an assistant picked to work in, if one was picked.</li>
     </ul>
-    <p>Page content and screenshots are passed straight through. The extension does not keep a copy,
-    and there is no history or log of your browsing inside it.</p>
+    <p>Short-lived records, wiped when the browser closes: the most recent network requests (address,
+    method and status only, never their contents) and console messages of pages the assistant was
+    working on, so a page reload does not erase what it was investigating; and the site block list
+    an assistant set for this session.</p>
+    <p>Page content and screenshots are passed straight through. The extension does not keep a copy.</p>
 
     <h2>What we never do</h2>
     <ul>
       <li>No analytics, telemetry or usage statistics — of any kind.</li>
       <li>No advertising, and no profiling.</li>
       <li>No selling or sharing of data, because none is collected.</li>
-      <li>No remote code. The extension runs only the code it was reviewed and installed with.</li>
+      <li>No remote code from us. All of the extension's own logic is in the package that was reviewed
+      and installed. The only outside code it runs is JavaScript your own assistant asks it to run,
+      and only through Chrome's user-scripts feature, which stays off until you turn it on.</li>
       <li>No account, and no sign-up.</li>
     </ul>
 

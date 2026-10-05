@@ -54,6 +54,13 @@ function loadDriver(result: unknown = { ok: true }) {
           // Every ref op watches for the tab starting a new load (F4).
           onUpdated: { addListener: () => {}, removeListener: () => {} },
         },
+        // browser_eval runs the caller's code here; the toggle is on.
+        userScripts: {
+          getScripts: async () => [],
+          execute: async () => [
+            { frameId: 0, documentId: "d", result: (result as { value?: unknown }).value },
+          ],
+        },
       },
     },
     mocks: {
@@ -67,10 +74,10 @@ function loadDriver(result: unknown = { ok: true }) {
           world?: string,
           frameId?: number,
         ) => {
-          // `refOpPage` takes (op, refs, opts); `evalPage` takes
-          // (expression, function, refs, dialogAction). Record the array that
-          // holds refs in each, so a wrongly-routed ref list is visible.
-          injections.push({ world, frameId, refs: Array.isArray(args[1]) ? args[1] : args[2] });
+          // `refOpPage` takes (op, refs, opts); `evalPrepPage` takes
+          // (refs, dialogAction). Record the array that holds refs in each, so a
+          // wrongly-routed ref list is visible.
+          injections.push({ world, frameId, refs: Array.isArray(args[1]) ? args[1] : args[0] });
           return result;
         },
         runFuncAllFrames: async () => [],

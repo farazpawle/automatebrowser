@@ -514,38 +514,31 @@ export async function snapshotFull(
   return snapshotFrames(tabId, verbose);
 }
 
-// ── eval (MAIN world; best-effort — page CSP may block it) ───────────────────
+// ── eval (the caller's code runs as a chrome.userScripts injection) ──────────
 
 /**
- * Injected evaluator (MAIN world). Two forms, one function:
- *   - `expression` — the cheap original, unchanged.
- *   - `fnSource` + `refs` — a function called with the referenced ELEMENTS (C19),
- *     so `(el) => el.innerText` works with a ref straight from a snapshot or find
- *     instead of re-querying by selector inside the expression, which is the
- *     exact fragility refs exist to remove.
+ * Packaged half of browser_eval (MAIN world, through `executeScript`): arms the
+ * dialog policy and resolves element refs, parking the elements for the user
+ * script. The CALLER's code never passes through here. It runs as a
+ * `chrome.userScripts` injection (see `evaluate`), because the Web Store's MV3
+ * policy permits code the extension did not ship ONLY through that API or the
+ * debugger, and names `eval` of a supplied string as a violation.
  *
  * Refs cross the world boundary for free: `data-bmcp-ref` is a DOM ATTRIBUTE, so
  * an element tagged by the ISOLATED-world snapshot walk is findable from MAIN.
  */
-async function evalPage(
-  expression: string | null,
-  fnSource: string | null,
+function evalPrepPage(
   refs: string[],
   dialogAction: string | null,
-): Promise<
-  { ok: true; value: unknown } | { ok: false; error: string; code?: string }
-> {
+): { ok: true } | { ok: false; error: string; code?: string } {
   // A dialog raised BY the evaluated code pauses the renderer, so nothing here
   // can answer it afterwards — the call would burn its whole timeout. Arming the
   // content script's existing policy for the duration is the only point at which
-  // it can be answered, and it is restored afterwards so this cannot silently
-  // change how the page behaves for the next call.
+  // it can be answered, and `evalRestorePage` puts it back afterwards so this
+  // cannot silently change how the page behaves for the next call.
   const w = window as any;
-  const priorPolicy = w.__bmcpDialogPolicy;
+  w.__bmcpEvalPrior = w.__bmcpDialogPolicy ?? null;
   if (dialogAction) w.__bmcpDialogPolicy = { action: dialogAction };
-  const restore = () => {
-    if (dialogAction) w.__bmcpDialogPolicy = priorPolicy ?? null;
-  };
   const REF_ATTR = "data-bmcp-ref";
   // KEEP IDENTICAL to the resolver in refOpPage / findFn — a smoke assertion
   // compares all three byte for byte. `executeScript` serialises by source, so
@@ -574,47 +567,44 @@ async function evalPage(
     return null;
   };
 
-  try {
-    if (fnSource) {
-      const els: HTMLElement[] = [];
-      for (const ref of refs) {
-        const el = find(ref, document);
-        if (!el) {
-          restore();
-          return {
-            ok: false,
-            code: "REF_NOT_FOUND",
-            error: `Element ref "${ref}" not found.`,
-          };
-        }
-        els.push(el);
-      }
-      // Parenthesised so both `function (el) {}` and `(el) => …` parse as an
-      // expression rather than a declaration.
-      // eslint-disable-next-line no-eval
-      const fn = eval(`(${fnSource})`);
-      if (typeof fn !== "function") {
-        restore();
-        return { ok: false, error: "`function` did not evaluate to a function." };
-      }
-      // AWAIT the result. `executeScript` awaits a promise the injected function
-      // RETURNS, but this one was nested inside the result object — so an async
-      // page function came back as `{}`, the structured clone of an unsettled
-      // promise, with no error (seen on a real page 2026-08-27). Silently wrong
-      // is the worst shape a result can have.
-      const out = { ok: true as const, value: await fn(...els) };
-      restore();
-      return out;
+  const els: HTMLElement[] = [];
+  for (const ref of refs) {
+    const el = find(ref, document);
+    if (!el) {
+      if (dialogAction) w.__bmcpDialogPolicy = w.__bmcpEvalPrior;
+      delete w.__bmcpEvalPrior;
+      return { ok: false, code: "REF_NOT_FOUND", error: `Element ref "${ref}" not found.` };
     }
-    // Indirect-ish eval in the page's MAIN world. Strict-CSP pages without
-    // 'unsafe-eval' will throw — caller reports that as a clear error.
-    // eslint-disable-next-line no-eval
-    const value = await eval(expression as string);
-    restore();
-    return { ok: true, value };
-  } catch (e: any) {
-    restore();
-    return { ok: false, error: String(e?.message || e) };
+    els.push(el);
+  }
+  w.__bmcpEvalEls = els;
+  return { ok: true };
+}
+
+/** Undo `evalPrepPage`, whatever the caller's code did in between. */
+function evalRestorePage(dialogAction: string | null): void {
+  const w = window as any;
+  if (dialogAction) w.__bmcpDialogPolicy = w.__bmcpEvalPrior ?? null;
+  delete w.__bmcpEvalPrior;
+  delete w.__bmcpEvalEls;
+}
+
+const USER_SCRIPTS_TOGGLE =
+  "open the extension's details page (chrome://extensions or edge://extensions, click \"Details\" " +
+  'on AutomateBrowser) and turn on "Allow User Scripts" — before Chrome 138 the switch is ' +
+  '"Developer mode" at the top of chrome://extensions instead. Only a person can do that.';
+
+/**
+ * Chrome leaves `chrome.userScripts` undefined until a person turns the toggle
+ * on, and if it is revoked while the worker runs, every call throws instead.
+ * Calling a method catches both — the check Chrome's own docs recommend.
+ */
+function userScriptsReady(): boolean {
+  try {
+    void chrome.userScripts.getScripts().catch(() => {});
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -645,39 +635,62 @@ export async function evaluate(
 
   // Element refs may name a frame (B5); the evaluated code then runs in it.
   const { frameId, bare } = frameOf(refs);
-  const run = () =>
-    runFunc(
-      tabId,
-      evalPage,
-      [expression || null, fnSource || null, bare, args.dialogAction ?? null],
-      "MAIN",
-      frameId,
+  if (!userScriptsReady()) {
+    throw new Error(
+      "USER_SCRIPTS_DISABLED: browser_eval runs your JavaScript through Chrome's user-scripts " +
+        `feature, which is switched off for this extension. To fix it, ${USER_SCRIPTS_TOGGLE}`,
     );
+  }
+  const dialog = args.dialogAction ?? null;
+  const prep = () => runFunc(tabId, evalPrepPage, [bare, dialog], "MAIN", frameId);
 
-  let r = await run();
+  let p = await prep();
   // Same recovery contract as an interaction (B2): a ref can go stale between the
   // snapshot and the call, so re-tag with the CANONICAL walk and try once more.
   // Only meaningful because refs are signature-derived — a re-tag hands the same
   // element the same ref.
-  if (!r.ok && r.code === "REF_NOT_FOUND") {
+  if (!p.ok && p.code === "REF_NOT_FOUND") {
     try {
       await runFunc(tabId, snapshotPage, [false], "ISOLATED", frameId);
-      r = await run();
+      p = await prep();
     } catch {
       /* a page that cannot be snapshotted is not recoverable */
     }
-    if (!r.ok && r.code === "REF_NOT_FOUND") {
+    if (!p.ok && p.code === "REF_NOT_FOUND") {
       throw new Error(
-        `STALE_REF: ${r.error} Re-resolving it failed — take a fresh browser_snapshot and use the new ref.`,
+        `STALE_REF: ${p.error} Re-resolving it failed — take a fresh browser_snapshot and use the new ref.`,
       );
     }
   }
-  if (!r.ok) {
-    throw new Error(
-      `eval failed: ${r.error}. The page's Content-Security-Policy may block eval — use browser_snapshot instead.`,
-    );
+  if (!p.ok) throw new Error(`eval failed: ${p.error}`);
+
+  // The function form is inlined as SOURCE and called with the parked elements;
+  // awaited, because an async page function must not come back as `{}`. The
+  // expression form runs inside a block: a top-level let/const in a classic script
+  // stays on the page for good, so the next call reusing the name would throw,
+  // while a block scopes it and still completes with its last statement's value.
+  // Chrome awaits a script that evaluates to a promise, as `await eval` did.
+  const code = fnSource
+    ? `(async () => {\n  const fn = (\n${fnSource}\n);\n` +
+      '  if (typeof fn !== "function") throw new Error("`function` did not evaluate to a function.");\n' +
+      "  return await fn(...(window.__bmcpEvalEls || []));\n})()"
+    : `{\n${expression}\n}`;
+
+  let out: chrome.userScripts.InjectionResult | undefined;
+  try {
+    [out] = await chrome.userScripts.execute({
+      target: { tabId, frameIds: [frameId] },
+      world: "MAIN",
+      js: [{ code }],
+    });
+  } catch (e: any) {
+    throw new Error(`eval failed: ${String(e?.message || e)}`);
+  } finally {
+    // A navigation the code started has already taken the page this would clean.
+    await runFunc(tabId, evalRestorePage, [dialog], "MAIN", frameId).catch(() => {});
   }
-  return r.value;
+  if (out?.error) throw new Error(`eval failed: ${out.error}`);
+  return out?.result;
 }
 
 // ── interactions ─────────────────────────────────────────────────────────────

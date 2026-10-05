@@ -890,6 +890,13 @@ with a selector that may not match what the snapshot saw. A `filePath` writes a 
 rather than inlining it, and `dialogAction` answers a dialog the code itself raises instead of hanging
 on it.
 
+**It needs one switch turned on in the browser, once.** Your code runs through Chrome's user-scripts
+feature, the only way the Chrome Web Store lets an extension run code it did not ship. Chrome keeps
+that off until a person turns it on: open `chrome://extensions` (or `edge://extensions`), click
+**Details** on AutomateBrowser, and turn on **Allow User Scripts**. Before Chrome 138 the switch is
+**Developer mode** at the top of that page instead. Until then `browser_eval` refuses with
+`USER_SCRIPTS_DISABLED` and runs nothing; every other tool works as normal.
+
 An `await`ed result is resolved before it is returned — a promise used to come back as an empty
 object, which looked like a successful call that produced nothing.
 
@@ -1398,6 +1405,7 @@ raised error name the same problem the same way.
 | `ORIGIN_BLOCKED` | your own allow / deny / sensitive list refused it, or the tab moved between the check and the action | `browser_status` prints the policy |
 | `READ_ONLY` | read-only mode is on and this tool changes the page | `browser_status` |
 | `EVAL_BLOCKED` | running JavaScript you wrote is switched off — even to read | `browser_status`; use a snapshot or `browser_find` instead |
+| `USER_SCRIPTS_DISABLED` | `browser_eval` needs Chrome's **Allow User Scripts** switch for this extension, and it is off | a person turns it on ([how](#running-your-own-javascript-against-elements-you-already-found)); meanwhile read with a snapshot or `browser_find` |
 | `CSP_BLOCKED` `MIXED_CONTENT` `CORS_BLOCKED` `DEPRECATED_API` `THIRD_PARTY_COOKIE_BLOCKED` | why something on the page silently did nothing | `browser_issues` |
 
 With `AUTOMATE_BROWSER_STRUCTURED=1` each also arrives as `structuredContent` — the code, the message,
