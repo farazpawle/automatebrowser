@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AutomateBrowser — automate your real browser with AI</title>
-<meta name="description" content="Automate your real browser with AI. Debugger-free, logged-in, shareable across IDEs.">
+<meta name="description" content="Let AI agents use your real, logged-in browser in their own background tabs while you keep browsing. Debugger-free, private, shareable across editors.">
 <meta name="theme-color" content="#faf7f2">
 <meta property="og:title" content="AutomateBrowser">
-<meta property="og:description" content="Automate your real browser with AI — debugger-free, logged-in, and shareable across IDEs.">
+<meta property="og:description" content="Let AI agents use your real, logged-in browser in their own background tabs — while you keep browsing.">
 <meta property="og:type" content="website">
 <link rel="icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -59,6 +59,8 @@ a{color:inherit}
 .dek{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-block-end:26px}
 .head{font-family:var(--serif);font-size:clamp(44px,9.5vw,108px);line-height:.96;letter-spacing:-.025em;max-width:15ch}
 .head i{color:var(--accent)}
+.head-2{font-family:var(--serif);font-size:clamp(22px,3vw,34px);line-height:1.25;letter-spacing:-.01em;color:var(--ink-soft);max-width:30ch;margin-block-start:24px}
+.head-2 b{color:var(--ink);font-weight:400;box-shadow:inset 0 -.42em 0 var(--accent-soft)}
 .hero-body{display:grid;gap:34px;margin-block-start:40px;padding-block-start:34px;border-block-start:1px solid var(--rule)}
 @media(min-width:860px){.hero-body{grid-template-columns:1.1fr .9fr;gap:60px}}
 .standfirst{font-family:var(--serif);font-size:clamp(20px,2.4vw,27px);line-height:1.42;color:var(--ink-soft)}
@@ -90,6 +92,41 @@ section{padding-block:clamp(54px,7.5vw,90px);border-block-end:1px solid var(--ru
 .folio{font-family:var(--mono);font-size:12px;letter-spacing:.1em;color:var(--accent);padding-block-start:12px;white-space:nowrap}
 h2{font-family:var(--serif);font-size:clamp(30px,4.6vw,50px);line-height:1.06;letter-spacing:-.02em;max-width:20ch}
 .sec-sub{margin-block-start:16px;color:var(--ink-soft);max-width:60ch}
+
+/* ---------- beside you ---------- */
+.win{margin:0;border:1px solid var(--ink);background:var(--paper);box-shadow:10px 10px 0 var(--paper-2)}
+.win-tabs{display:flex;border-block-end:1px solid var(--ink);background:var(--paper-2)}
+.win-tab{flex:1 1 0;min-width:0;padding:10px 14px;border-inline-end:1px solid var(--rule-strong);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-soft)}
+.win-tab:last-child{border-inline-end:0}
+.win-tab.you{background:var(--paper);color:var(--ink);margin-block-end:-1px}
+.who{display:block;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.win-tab.bot .who{color:var(--accent)}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-inline-end:6px;vertical-align:1px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.win-body{display:grid}
+@media(min-width:760px){.win-body{grid-template-columns:1.2fr .8fr}}
+.win-you{padding:24px;display:grid;gap:10px;align-content:start}
+.win-you .tag{font-family:var(--serif);font-size:20px}
+.ln{height:9px;border-radius:5px;background:var(--paper-2)}
+.ln:nth-child(3){width:92%}.ln:nth-child(4){width:78%}.ln:nth-child(5){width:85%}.ln:nth-child(6){width:60%}
+.win-log{padding:22px 24px;background:var(--ink);color:var(--paper);font-family:var(--mono);font-size:12.5px;line-height:2}
+.win-log p:first-child{color:#8FA0BC;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-block-end:6px}
+.win-log .ok{color:#7FB0FF}
+.pillars{display:grid;gap:34px;margin-block-start:56px}
+@media(min-width:860px){.pillars{grid-template-columns:repeat(3,1fr);gap:40px}}
+.pillar{border-block-start:1px solid var(--ink);padding-block-start:20px}
+.pillar .n{font-family:var(--mono);font-size:12px;color:var(--accent)}
+.pillar h3{font-family:var(--serif);font-size:clamp(24px,2.6vw,30px);line-height:1.15;margin-block:8px 10px}
+.pillar p{font-size:15px;color:var(--ink-soft)}
+.extras-h{font-family:var(--serif);font-size:clamp(24px,3vw,32px);margin-block:64px 22px}
+.extras{display:grid;gap:14px}
+@media(min-width:600px){.extras{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.extras{grid-template-columns:repeat(4,1fr)}}
+.extra{border:1px solid var(--rule);background:var(--paper-2);padding:20px;transition:border-color .18s}
+.extra:hover{border-color:var(--accent)}
+.extra h4{font-family:var(--serif);font-size:21px;line-height:1.2;margin-block-end:8px}
+.extra p{font-size:14px;color:var(--ink-soft);line-height:1.6}
+@media(prefers-reduced-motion:reduce){.dot{animation:none}}
 
 /* ---------- index list ---------- */
 .index{border-block-start:1px solid var(--ink)}
@@ -165,7 +202,7 @@ footer{padding-block:44px 56px}
   <div class="wrap mast-in">
     <a class="logo" href="#top"><img src="logo.png" alt="" width="292" height="220">AutomateBrowser</a>
     <nav class="mast-links">
-      <a href="#what">Capabilities</a><a href="#tools">Tools</a><a href="#how">Architecture</a><a href="#download">Download</a><a href="#start">Quick start</a>
+      <a href="#beside">Beside you</a><a href="#what">Capabilities</a><a href="#tools">Tools</a><a href="#how">Architecture</a><a href="#download">Download</a><a href="#start">Quick start</a>
       <a href="https://github.com/farazpawle/automatebrowser">GitHub</a>
     </nav>
   </div>
@@ -175,13 +212,14 @@ footer{padding-block:44px 56px}
   <div class="wrap">
     <p class="dek">A browser tool for AI agents</p>
     <h1 class="head">The browser you<br>already trust,<br><i>handed to the machine.</i></h1>
+    <p class="head-2">And it works in <b>its own tab, in the background</b> — so you keep browsing while it does.</p>
 
     <div class="hero-body">
       <div class="hero-col">
         <p class="standfirst">Every other automation tool opens a blank browser and then spends the next hour trying to get past a login screen. This one <b>drives the browser sitting in front of you</b> — your sessions, your cookies, your fingerprint.</p>
         <div class="actions">
-          <a class="btn btn-solid" href="#start">Quick start</a>
-          <a class="btn btn-line" href="#download">Download</a>
+          <a class="btn btn-solid" href="https://chromewebstore.google.com/detail/automatebrowser/lcpeddejaghbleiejgdjekobffadfkba">Add to Chrome</a>
+          <a class="btn btn-line" href="#start">Quick start</a>
           <a class="btn btn-line" href="https://github.com/farazpawle/automatebrowser">Read the source</a>
         </div>
       </div>
@@ -202,10 +240,74 @@ footer{padding-block:44px 56px}
   </div>
 </div>
 
+<section id="beside">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="folio">I. Beside you</p>
+      <div>
+        <h2>It works next to you, not instead of you.</h2>
+        <p class="sec-sub">Most browser agents take your screen over while they work. This one opens a tab of its own, in the background, and gets on with it. You keep reading, typing and clicking in the tab in front of you — it never moves.</p>
+      </div>
+    </div>
+
+    <figure class="win" aria-label="Illustration: you browse your inbox while two agents work in their own background tabs">
+      <div class="win-tabs" aria-hidden="true">
+        <div class="win-tab you"><span class="who">You</span>Inbox — 3 unread</div>
+        <div class="win-tab bot"><span class="who"><span class="dot"></span>Agent · Cursor</span>Checkout test</div>
+        <div class="win-tab bot"><span class="who"><span class="dot"></span>Agent · Claude Code</span>Docs research</div>
+      </div>
+      <div class="win-body" aria-hidden="true">
+        <div class="win-you">
+          <p class="tag">You are here. Nothing moves.</p>
+          <span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln"></span>
+        </div>
+        <div class="win-log">
+          <p>Meanwhile, in the background</p>
+          <p>→ opened its own tab</p>
+          <p>→ signed in as you, already</p>
+          <p>→ filled the shipping form</p>
+          <p>→ clicked “Place order”</p>
+          <p class="ok">✓ order page loaded</p>
+        </div>
+      </div>
+    </figure>
+
+    <div class="pillars">
+      <article class="pillar">
+        <span class="n">01</span>
+        <h3>A tab of its own</h3>
+        <p>On first use it opens a new tab in the background and works there. It never grabs the tab you are looking at, so a half-written email can never be navigated away.</p>
+      </article>
+      <article class="pillar">
+        <span class="n">02</span>
+        <h3>Or any tab you point at</h3>
+        <p>Want it on a page you already have open — your dashboard, your local site? Name it by its title or address and the agent takes that tab over right where it sits, without bringing it to the front.</p>
+      </article>
+      <article class="pillar">
+        <span class="n">03</span>
+        <h3>Several agents, one browser</h3>
+        <p>Two editors, two agents, two tabs of the same browser, at the same time. If both want the same tab, one hands it over by name and the other is told on its very next step.</p>
+      </article>
+    </div>
+
+    <h3 class="extras-h">And the things you only notice once they are missing.</h3>
+    <div class="extras">
+      <article class="extra"><h4>A stranger's view, on demand</h4><p>A private window with none of your logins, for checking what a first-time visitor sees — without signing out of anything.</p></article>
+      <article class="extra"><h4>Your secrets stay hidden</h4><p>Cookie and storage values come back as names only. The agent sees your session tokens only if it explicitly asks.</p></article>
+      <article class="extra"><h4>You choose the sites</h4><p>Allow and block lists, enforced by the browser's own network layer, plus a read-only switch for look-but-don't-touch work.</p></article>
+      <article class="extra"><h4>No “being debugged” bar</h4><p>Ordinary work never shows Chrome's yellow warning bar. Only a few advanced features need it, and they ask first.</p></article>
+      <article class="extra"><h4>It cleans up after itself</h4><p>When it is done it closes the tabs it opened — and never closes one of yours, even one you lent it.</p></article>
+      <article class="extra"><h4>See who is where</h4><p>The extension's popup lists every connected agent and the tab each one is working in, so you always know who is doing what.</p></article>
+      <article class="extra"><h4>It reconnects on its own</h4><p>Restart the browser or lose the link, and it finds its way back by itself instead of failing until you restart your editor.</p></article>
+      <article class="extra"><h4>Light on your AI's memory</h4><p>Short replies instead of page dumps, and screenshots saved to disk, so long sessions do not drown the model.</p></article>
+    </div>
+  </div>
+</section>
+
 <section id="what">
   <div class="wrap">
     <div class="sec-head">
-      <p class="folio">I. Capabilities</p>
+      <p class="folio">II. Capabilities</p>
       <div>
         <h2>What an agent can actually do in there.</h2>
         <p class="sec-sub">All 46 tools, grouped by intent. Actions stay deliberately terse — a short confirmation rather than a page dump — so a long working session does not drown the model in its own transcript.</p>
@@ -325,7 +427,7 @@ footer{padding-block:44px 56px}
 <section id="tools">
   <div class="wrap">
     <div class="sec-head">
-      <p class="folio">II. The full list</p>
+      <p class="folio">III. The full list</p>
       <div>
         <h2>All 46 tools, and what each one is for.</h2>
         <p class="sec-sub">The section above groups them by what you are trying to do. This one names every single one, because an agent calls them by name and you may reasonably want to know exactly what you are handing over. A sentence or two each.</p>
@@ -515,7 +617,7 @@ footer{padding-block:44px 56px}
 <section id="how">
   <div class="wrap">
     <div class="sec-head">
-      <p class="folio">III. Architecture</p>
+      <p class="folio">IV. Architecture</p>
       <div>
         <h2>One relay in the middle, and no ports to configure.</h2>
         <p class="sec-sub">A single lightweight relay owns the local socket. Each editor dials in as a controller; each browser extension dials in as a browser. The relay routes calls and hands out one lease per tab.</p>
@@ -554,7 +656,7 @@ footer{padding-block:44px 56px}
 <section id="download">
   <div class="wrap">
     <div class="sec-head">
-      <p class="folio">IV. Download</p>
+      <p class="folio">V. Download</p>
       <div>
         <h2>Ready-made files, for the routes that take them.</h2>
         <p class="sec-sub">Always the latest release. Every earlier version, and what changed in each, is on the <a href="https://github.com/farazpawle/automatebrowser/releases">releases page</a>.</p>
@@ -582,8 +684,8 @@ footer{padding-block:44px 56px}
         <span class="n">03</span>
         <h3>Browser extension</h3>
         <div class="dl">
-          <p>Needed on every route — the files above are only the server half. It is not in a store yet, so you build it and load it unpacked; step one below shows how.</p>
-          <a class="btn btn-line" href="#start">Set up the extension</a>
+          <p>Needed on every route — the files above are only the server half. One click from the Chrome Web Store, and it works in Edge too.</p>
+          <a class="btn btn-solid" href="https://chromewebstore.google.com/detail/automatebrowser/lcpeddejaghbleiejgdjekobffadfkba">Add to Chrome</a>
         </div>
       </article>
     </div>
@@ -593,7 +695,7 @@ footer{padding-block:44px 56px}
 <section id="start">
   <div class="wrap">
     <div class="sec-head">
-      <p class="folio">V. Quick start</p>
+      <p class="folio">VI. Quick start</p>
       <div>
         <h2>Three steps. About five minutes.</h2>
       </div>
@@ -602,30 +704,26 @@ footer{padding-block:44px 56px}
     <div class="recipe">
       <article class="rstep">
         <div>
-          <h3>Load the extension</h3>
-          <p>Chrome or Edge, version 137 or newer. Turn on Developer mode, choose Load unpacked, and select the build output folder.</p>
-<pre class="code"><span class="c"># in Chrome-extension/</span>
-npm install
-npm run build    <span class="c">→ .output/chrome-mv3/</span></pre>
+          <h3>Add the extension</h3>
+          <p>Chrome or Edge, version 137 or newer. <a href="https://chromewebstore.google.com/detail/automatebrowser/lcpeddejaghbleiejgdjekobffadfkba">Add it from the Chrome Web Store</a> — in Edge, allow extensions from other stores when it asks. It connects on its own; there is no button to press.</p>
         </div>
       </article>
 
       <article class="rstep">
         <div>
-          <h3>Build the server</h3>
-          <p>It carries its own dependencies, so it builds standalone with nothing else to install first.</p>
-<pre class="code"><span class="c"># in the repository root</span>
-npm install
-npm run build</pre>
-          <p>On Claude Desktop, skip this and the next step: <a href="#download">download the <code>.mcpb</code></a> and open it.</p>
+          <h3>Install the server</h3>
+          <p>In Claude Code, one plugin brings the server and the skill together:</p>
+<pre class="code">/plugin marketplace add farazpawle/automatebrowser
+/plugin install automate-browser@automatebrowser</pre>
+          <p>On Claude Desktop, <a href="#download">download the <code>.mcpb</code></a> and open it instead.</p>
         </div>
       </article>
 
       <article class="rstep">
         <div>
-          <h3>Point your AI client at it</h3>
-          <p>Then restart the client. You never choose a port — the server discovers the relay on its own.</p>
-<pre class="code">claude mcp add automatebrowser -- node "/path/to/dist/index.js"</pre>
+          <h3>Or point any other client at it</h3>
+          <p>Register it as a stdio server, then restart the client. You never choose a port — the server finds the relay on its own.</p>
+<pre class="code">npx -y --package @automatebrowser/mcp mcp-server-automatebrowser</pre>
         </div>
       </article>
     </div>

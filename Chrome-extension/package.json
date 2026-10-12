@@ -1,8 +1,8 @@
 {
   "name": "automatebrowser-extension",
-  "description": "AutomateBrowser browser extension (Chrome/Edge) — WebSocket client that drives the active tab for the AutomateBrowser server.",
+  "description": "AutomateBrowser browser extension (Chrome/Edge) — WebSocket client that lets AutomateBrowser agents work in their own background tabs.",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",

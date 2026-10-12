@@ -19,6 +19,19 @@ Dates are the date of the work, not of a release.
 
 `1.0.1` was published on 2026-09-21, and work after it lands here.
 
+### Changed
+
+- **The extension is on the Chrome Web Store**, and the website and README now install it from there
+  instead of a build-and-load-unpacked recipe. Building it yourself is still documented.
+- **Messaging leads with the background tab.** The website hero, a new "Beside you" section, README,
+  the store listing and every client manifest now say the agent works in its own background tab,
+  can take over a tab you name, and shares one browser with other agents. Extension `1.0.1` carries
+  the new store description.
+- **The extension popup no longer says the agent drives the active tab** — it has not since
+  2026-08-30. It now says each agent works in its own background tab.
+- `@modelcontextprotocol/sdk` 1.30.0 → 1.32.1, clearing GHSA-6qxp-vccf-f47h and, through
+  `proxy-addr` 2.0.8, GHSA-jqcg-44mw-7w3h.
+
 ### Added
 
 - **Release downloads.** Every GitHub release now carries two files: `automatebrowser.mcpb` for a

@@ -1,7 +1,7 @@
 <h3 align="center">AutomateBrowser</h3>
 
 <p align="center">
-  Automate your <strong>real</strong> browser with AI — debugger-free, logged-in, and shareable across IDEs.
+  Let AI agents use your <strong>real</strong>, logged-in browser — in their own background tabs, while you keep browsing.
   <br />
   <a href="https://farazpawle.github.io/automatebrowser/"><strong>Website</strong></a>
 </p>
@@ -29,6 +29,16 @@ unless you supply an API key.
 
 ## Why AutomateBrowser
 
+- 🪟 **Works beside you, not instead of you** — the agent opens its **own tab in the background** and
+  works there. The tab you are reading never moves and your focus is never taken.
+  → [The agent's own tab](#the-agents-own-tab)
+- 🎯 **Or takes over any tab you point at** — name a tab you already have open by its title or
+  address, and the agent drives it where it sits, without bringing it to the front.
+- 👥 **Several agents, one browser** — each editor works in its own tab of the same browser at the
+  same time. → [Sharing a browser with another agent](#sharing-a-browser-with-another-agent)
+- 🕶️ **A stranger's view on demand** — a private window with none of your logins, without signing
+  out. → [A clean, logged-out session on demand](#a-clean-logged-out-session-on-demand)
+- 🧹 **Cleans up after itself** — closes the tabs it opened, never one of yours.
 - ⚡ **Fast** — automation runs locally; no remote round-trips.
 - 🔒 **Private** — your browsing stays on your device.
 - 👤 **Logged in** — uses your real profile, so you stay signed into every service.
@@ -297,9 +307,8 @@ AutomateBrowser/
 
 ## Quick start
 
-**Two halves, and only one of them is a one-liner.** The *server* installs from npm. The
-*extension* still has to be built and side-loaded, because it is not on the Chrome or Edge stores
-yet — that is the honest state of it, not a step you can skip.
+**Two halves, both one step.** The *server* installs from npm or as a plugin, and the *extension*
+installs from the [Chrome Web Store](https://chromewebstore.google.com/detail/automatebrowser/lcpeddejaghbleiejgdjekobffadfkba).
 
 ### 1. Install the server
 
@@ -333,7 +342,13 @@ mcp-server-automatebrowser` — while other clients want it as JSON: step 3 has 
 
 Neither route gives you a browser yet. That is step 2.
 
-### 2. Build and load the browser extension
+### 2. Add the browser extension
+
+**[Add AutomateBrowser from the Chrome Web Store](https://chromewebstore.google.com/detail/automatebrowser/lcpeddejaghbleiejgdjekobffadfkba)**
+— Chrome or Edge, v137+. In Edge, allow extensions from other stores when it asks. It connects on
+its own; there is no button to press.
+
+**Or build it yourself** — only if you are changing the extension:
 
 ```bash
 cd Chrome-extension

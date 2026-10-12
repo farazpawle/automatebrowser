@@ -20,7 +20,9 @@ import {
  * popup does not "connect". It shows live SERVER STATUS (is the MCP server
  * running / reachable?) and lets you choose targeting:
  *   - "Pin this tab"      → drive a specific tab, even in the background;
- *   - "Follow active tab" → drive whatever tab is in front (default).
+ *   - unpinned            → the server gives each agent its own background tab
+ *                           (the active-tab fallback in selected-tab.ts is only
+ *                           reached by a request that names no tab).
  */
 const byId = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -83,7 +85,7 @@ async function renderTarget(): Promise<void> {
     connectBtn.hidden = true;
     disconnectBtn.hidden = false;
   } else {
-    targetEl.textContent = "Driving: the active tab";
+    targetEl.textContent = "Agents work in their own tabs";
     connectBtn.hidden = false;
     disconnectBtn.hidden = true;
   }

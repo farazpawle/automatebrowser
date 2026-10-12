@@ -30,7 +30,7 @@ export default defineConfig({
     // use as the short description. The long version belongs in the dashboard's
     // own description field (Edge wants 250+ there), not here.
     description:
-      "Let an AI agent drive your real, logged-in browser from your editor — your tabs, your sessions, nothing leaving your machine.",
+      "Let AI agents use your real, logged-in browser in their own background tabs — you keep browsing. Nothing leaves your machine.",
     // No `default_locale`: the name/description are literal strings (no __MSG__
     // placeholders), so shipping a _locales/ folder isn't needed — and declaring
     // default_locale without one makes Chrome reject the unpacked load.
