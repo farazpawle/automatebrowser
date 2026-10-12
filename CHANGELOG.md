@@ -4,7 +4,7 @@ Notable changes to `@automatebrowser/mcp`. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-**`1.0.1` is the current release.** `1.0.0`, on 2026-09-19, was the first published to npm under
+**`1.0.2` is the current release.** `1.0.0`, on 2026-09-19, was the first published to npm under
 this name — take `1.0.1` over it: a freshly built extension cannot connect to `1.0.0` at all.
 `0.2.0` and `0.3.0` were cut the same way, on 2026-08-26 and 2026-09-17, and held; `0.3.0` reached
 npm on the day of the `1.0.0` release and was withdrawn within the hour. Its tag stays in the
@@ -17,7 +17,10 @@ Dates are the date of the work, not of a release.
 
 ## [Unreleased]
 
-`1.0.1` was published on 2026-09-21, and work after it lands here.
+## [1.0.2] - 2026-10-12
+
+Everything since `1.0.1` (published 2026-09-21), released together with extension `1.0.1` on the
+Chrome Web Store.
 
 ### Changed
 
@@ -237,7 +240,8 @@ The last release of `@browsermcp/mcp`, the upstream project this was extracted f
 under that name. `0.1.0` through `0.1.2` precede it; this repository begins at the point the server
 was extracted from that monorepo on 2025-03-27, and no history before that is reproduced here.
 
-[Unreleased]: https://github.com/farazpawle/automatebrowser/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/farazpawle/automatebrowser/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/farazpawle/automatebrowser/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/farazpawle/automatebrowser/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/farazpawle/automatebrowser/compare/cf28a4b...v1.0.0
 [0.2.0]: https://github.com/farazpawle/automatebrowser/commit/cf28a4b

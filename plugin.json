@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "automate-browser",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Let your agent use your real, logged-in browser in its own background tab — 46 tools plus the automate-browser skill covering tab ownership, page interaction, extraction, sessions, capture and troubleshooting.",
   "author": {
     "name": "AutomateBrowser",

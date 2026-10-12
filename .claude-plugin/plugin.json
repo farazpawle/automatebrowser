@@ -1,7 +1,7 @@
 {
   "name": "automate-browser",
   "displayName": "AutomateBrowser",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Let your agent use your real, logged-in browser in its own background tab — 46 tools, plus the automate-browser skill covering tab ownership, page interaction, extraction, sessions, capture and troubleshooting.",
   "author": {
     "name": "AutomateBrowser"
@@ -14,7 +14,7 @@
       "args": [
         "-y",
         "--package",
-        "@automatebrowser/mcp@1.0.1",
+        "@automatebrowser/mcp@1.0.2",
         "mcp-server-automatebrowser"
       ],
       "env": {

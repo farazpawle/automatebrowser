@@ -13,10 +13,10 @@
 // does nothing, which is worse than the omission it replaced.
 export const appConfig = {
   name: "@automatebrowser/mcp",
-  version: "1.0.1",
+  version: "1.0.2",
   server: {
     name: "@automatebrowser/mcp",
-    version: "1.0.1",
+    version: "1.0.2",
   },
 } as const;
 
@@ -41,7 +41,7 @@ function resolveWsPortRange(): [number, number] {
 export const mcpConfig = {
   server: {
     name: "@automatebrowser/mcp",
-    version: "1.0.1",
+    version: "1.0.2",
   },
   transport: {
     type: "stdio",

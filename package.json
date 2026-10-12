@@ -1,6 +1,6 @@
 {
   "name": "@automatebrowser/mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for browser automation using AutomateBrowser",
   "license": "Apache-2.0",
   "author": "AutomateBrowser",
